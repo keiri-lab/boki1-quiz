@@ -29,7 +29,9 @@
 
   【問題を追加する】
     QUESTIONS の最後（閉じ括弧 ] の直前）に、既存の1問を丸ごとコピーして貼り、
-    id を「次に追加する問題のID」（スタート画面の下部に表示）にして、中身を書き換えます。
+    id を「次に使えるID」にして、中身を書き換えます。
+    次に使えるIDは、check_quiz.js を実行すると表示されます（無ければ、QUESTIONS内の
+    最大の id に1を足した数）。公開ページには表示していません。
     ・answer は「正解が何番目の選択肢か」（1始まり）
     ・〇×問題は options: OX とし、answer は 1（〇）か 2（×）
     ・各問の終わりの「,」、文字列を囲む「"」や「`」の閉じ忘れに注意
@@ -287,6 +289,8 @@
   .ledger tfoot td { padding-top: 10px; border-top: 3px double var(--text); border-bottom: 0; font-weight: 700; }
   .dot { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 1px; background: var(--muted); border: 1px solid rgba(128,128,128,0.35); }
   .hint { margin: 12px 0 0; font-size: 0.82rem; color: var(--muted); }
+  .footer-link { margin: 16px 0 0; padding: 0 4px; font-size: 0.78rem; text-align: center; color: var(--muted); }
+  .footer-link a { color: inherit; text-decoration: underline; }
 
   /* ---- 結果画面（正解数は、実際の得点掲示板を模した固定の配色パネルに。ライト/ダーク共通） ---- */
   .scoreboard {
@@ -484,7 +488,7 @@ const CONFIG = {
 //
 //   1問の書式（コピーして使う）
 //   {
-//     id: 13,                  // 重複しない1以上の整数（スタート画面に「次に追加する問題のID」を表示）
+//     id: 13,                  // 重複しない1以上の整数（次に使えるIDは check_quiz.js で確認）
 //     category: "商業簿記",     // 区分（CONFIG.categoryColors と同じ表記）
 //     question: `問題文`,       // 改行できます（` で囲む）
 //     options: ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],   // 4択は4個
@@ -2491,11 +2495,14 @@ function createCalculator(options) {
           h("h1", { class: "title" }, cfg.appTitle),
           h("p", { class: "lead" }, pool.length ? "全" + pool.length + "問からランダムに" + size + "問を出題します。" : "出題できる問題がありません。"),
           ledger,
-          h("p", { class: "hint" }, "PCでは数字キーで選択、Enterで決定できます。"),
-          h("p", { class: "hint" }, "次に追加する問題のID：" + (data.maxId + 1))),
+          h("p", { class: "hint" }, "PCでは数字キーで選択、Enterで決定できます。")),
         diagnostics()),
       h("div", { class: "actions" },
-        h("button", { type: "button", class: "btn", disabled: pool.length === 0, onclick: startQuiz }, "スタート")));
+        h("button", { type: "button", class: "btn", disabled: pool.length === 0, onclick: startQuiz }, "スタート")),
+      h("p", { class: "footer-link" },
+        h("a", { href: "./privacy.html" }, "プライバシーポリシー"),
+        "　・　",
+        h("a", { href: "./contact.html" }, "お問い合わせ")));
     window.scrollTo(0, 0);
   }
 
