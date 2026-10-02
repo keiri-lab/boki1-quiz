@@ -66,10 +66,12 @@
     --primary: #e2570a;
     --primary-text: #ffffff;
     --primary-bg: #fdede2;
+    --primary-ink: #c24a08;
     --correct: #1b7a4b;
     --correct-bg: #e7f5ed;
     --wrong: #c2372b;
     --wrong-bg: #fbeceb;
+    --grid: rgba(116, 107, 96, 0.16);
     --board-bg: #1a1512;
     --board-text: #ffb74d;
   }
@@ -85,10 +87,12 @@
       --primary: #ff7a29;
       --primary-text: #1a1209;
       --primary-bg: #3a2211;
+      --primary-ink: #ff7a29;
       --correct: #4caf7d;
       --correct-bg: #16281f;
       --wrong: #e8695c;
       --wrong-bg: #2e1613;
+      --grid: rgba(243, 236, 226, 0.09);
     }
   }
   :root[data-theme="dark"] {
@@ -100,10 +104,12 @@
     --primary: #ff7a29;
     --primary-text: #1a1209;
     --primary-bg: #3a2211;
+    --primary-ink: #ff7a29;
     --correct: #4caf7d;
     --correct-bg: #16281f;
     --wrong: #e8695c;
     --wrong-bg: #2e1613;
+    --grid: rgba(243, 236, 226, 0.09);
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -128,27 +134,6 @@
     flex-direction: column;
   }
   .brand-stripe { height: 6px; background: var(--primary); }
-  .theme-toggle {
-    position: fixed;
-    top: calc(14px + env(safe-area-inset-top, 0px));
-    right: 14px;
-    z-index: 10;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid var(--rule);
-    background: var(--card);
-    color: var(--text);
-    font-size: 1.15rem;
-    line-height: 1;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-  .theme-toggle:active { transform: scale(0.94); }
   .main { flex: 1; padding: 6px 16px 16px; }
   .main.center {
     display: flex;
@@ -164,8 +149,7 @@
     top: 0;
     z-index: 5;
     background: var(--bg);
-    /* 右側は、右上固定のライト/ダーク切り替えボタン（幅40px）と重ならないよう広めに確保 */
-    padding: calc(12px + env(safe-area-inset-top)) 58px 10px 16px;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 10px;
   }
   .top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .count { font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -290,7 +274,34 @@
   .ledger tfoot td { padding-top: 10px; border-top: 3px double var(--text); border-bottom: 0; font-weight: 700; }
   .dot { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 1px; background: var(--muted); border: 1px solid rgba(128,128,128,0.35); }
   .hint { margin: 12px 0 0; font-size: 0.82rem; color: var(--muted); }
-  .footer-link { margin: 16px 0 0; padding: 0 4px; font-size: 0.78rem; text-align: center; color: var(--muted); }
+  .footer-link { margin: 8px 0 0; padding: 0 4px; font-size: 0.78rem; text-align: center; color: var(--muted); }
+
+  /* ---- スタート画面 ---- */
+  .main.start { padding-top: calc(28px + env(safe-area-inset-top)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .hero .eyebrow { margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--primary-ink); letter-spacing: 0.04em; }
+  .hero .title { margin: 2px 0 6px; font-size: 1.75rem; }
+  .hero .tagline { margin: 0 0 20px; color: var(--muted); }
+  .hero .btn { min-height: 58px; font-size: 1.1rem; }
+  .hero .lead { margin: 8px 0 0; font-size: 0.82rem; text-align: center; }
+  .features { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 14px; }
+  .features li { padding-left: 12px; border-left: 3px solid var(--primary); }
+  .features strong { display: block; font-size: 0.98rem; }
+  .features li span { display: block; font-size: 0.84rem; color: var(--muted); line-height: 1.6; }
+  .cats { margin: 28px 0 0; padding-top: 10px; border-top: 2px solid var(--text); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 20px; font-variant-numeric: tabular-nums; }
+  .cat { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 0.9rem; }
+  .cat-n { font-weight: 700; }
+  .start-foot { margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--rule); text-align: center; }
+  .foot-note { margin: 12px 0 0; font-size: 0.78rem; color: var(--muted); }
+  .seg { display: inline-flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; font-size: 0.82rem; }
+  .seg-label { display: flex; align-items: center; padding: 0 12px; color: var(--muted); border-right: 1px solid var(--rule); }
+  .seg-btn { min-height: 38px; padding: 0 14px; border: 0; background: var(--card); color: var(--text); font: inherit; cursor: pointer; touch-action: manipulation; }
+  .seg-btn + .seg-btn { border-left: 1px solid var(--rule); }
+  .seg-btn[aria-pressed="true"] { background: var(--primary); color: var(--primary-text); font-weight: 700; }
+  /* 区分の見た目（試験の時間割で2種類） */
+  .badge.solid { background: var(--text); color: var(--bg); }
+  .badge.outline { background: transparent; color: var(--primary-ink); box-shadow: inset 0 0 0 1.5px var(--primary); }
+  .dot.solid { background: var(--text); border-color: transparent; }
+  .dot.outline { background: transparent; border: 1.5px solid var(--primary); }
   .footer-link a { color: inherit; text-decoration: underline; }
 
   /* ---- 結果画面（正解数は、実際の得点掲示板を模した固定の配色パネルに。ライト/ダーク共通） ---- */
@@ -337,7 +348,7 @@
 
   /* ---- 電卓（問題文と選択肢の間。開閉式） ---- */
   .calc-wrap { margin: 0 0 16px; }
-  .calc-toggle {
+  .calc-toggle, .scratch-toggle {
     display: block;
     width: 100%;
     min-height: 44px;
@@ -353,6 +364,29 @@
   }
   .calc { margin-top: 10px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); scroll-margin-top: 84px; scroll-margin-bottom: 96px; }
   .calc[hidden] { display: none; }
+  .tool-toggles { display: grid; gap: 8px; }
+  .tool-toggles.two { grid-template-columns: 1fr 1fr; }
+  .tool-toggles .calc-toggle, .tool-toggles .scratch-toggle { padding: 0 8px; }
+  .scratch { margin-top: 10px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); scroll-margin-top: 84px; scroll-margin-bottom: 96px; }
+  .scratch[hidden] { display: none; }
+  .scratch-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+  .st {
+    min-height: 40px; padding: 0 4px; border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--card); color: var(--text); font: inherit; font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .st[aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-text); }
+  .st:disabled { opacity: 0.4; cursor: default; }
+  .scratch-canvas {
+    display: block; width: 100%; height: clamp(260px, 52vh, 520px);
+    border: 1px solid var(--rule); border-radius: 3px;
+    background-color: var(--card);
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    touch-action: none; cursor: crosshair;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+  .scratch-hint { margin: 6px 0 0; font-size: 0.72rem; line-height: 1.5; color: var(--muted); }
   .calc:focus { outline: none; }
   .calc-display { margin-bottom: 10px; padding: 4px 12px 6px; border: 1px solid var(--rule); border-radius: 3px; background: var(--card); }
   .calc-flags { display: flex; gap: 10px; min-height: 1.3em; font-size: 0.7rem; font-weight: 700; line-height: 1.3; color: var(--muted); }
@@ -415,33 +449,7 @@
 
 <body>
 <div class="brand-stripe" aria-hidden="true"></div>
-<button type="button" id="themeToggle" class="theme-toggle"></button>
 <div id="app"><noscript>JavaScript を有効にしてください（このページは JavaScript で動作します）。</noscript></div>
-<script>
-  // ライト/ダークの手動切り替え。quiz-data/quiz-core/quiz-ui とは独立させ、
-  // 問題データの読み込みに失敗した場合でも切り替えボタン自体は動くようにしている。
-  (function () {
-    var KEY = "boki1_quiz_theme";
-    var btn = document.getElementById("themeToggle");
-    function effective() {
-      var attr = document.documentElement.getAttribute("data-theme");
-      if (attr === "light" || attr === "dark") return attr;
-      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }
-    function paint() {
-      var eff = effective();
-      btn.textContent = eff === "dark" ? "☀️" : "🌙";
-      btn.setAttribute("aria-label", eff === "dark" ? "ライトモードに切り替える（現在はダーク）" : "ダークモードに切り替える（現在はライト）");
-    }
-    btn.addEventListener("click", function () {
-      var next = effective() === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", next);
-      try { localStorage.setItem(KEY, next); } catch (e) {}
-      paint();
-    });
-    paint();
-  })();
-</script>
 
 <script id="quiz-data">
 // ============================================================================
@@ -469,6 +477,11 @@ const CONFIG = {
     taxRate: 0.1,            // 税込・税抜キーの税率（0.1＝10％）
   },
 
+  // 下書き欄（手書き。問題文と回答欄の間。開閉式で、問題ごとに白紙に戻る）
+  scratchpad: {
+    enabled: true,           // false にすると下書き欄を出さない
+  },
+
   // 評価メッセージ：得点（100点満点）が min 以上になる最初の行が使われます。
   // min が 0 の行は必ず1つ残してください。
   // 70点は日商簿記1級の合格基準（総合70%以上）を目安にした値です。
@@ -481,13 +494,29 @@ const CONFIG = {
     { min: 0,   label: "要復習",     message: "まず解説を読み、「なぜその処理になるか」から確認しましょう。" },
   ],
 
-  // 区分ごとのバッジ色。区分を増やしたらここにも1行足すと色が付きます（無くても動作します）。
-  // 問題側の category と一字一句そろえてください（表記ゆれはスタート画面で注意表示されます）。
+  // 区分ごとのバッジの見た目。本試験の時間割に合わせて2種類に分けています。
+  //   "solid"   … 黒地（ダークでは白地）：商業簿記・会計学（同じ時間に解く財務会計系）
+  //   "outline" … オレンジの枠：工業簿記・原価計算（同じ時間に解く管理会計系）
+  //   "#1e4fa3" のような色コードを書くと、その色の地になります。
+  // 区分を増やしたらここにも1行足してください。問題側の category と一字一句そろえること（表記ゆれはスタート画面で注意表示）。
   categoryColors: {
-    "商業簿記": "#5c5347",
-    "会計学":   "#8c2f1b",
-    "工業簿記": "#b8860b",
-    "原価計算": "#5c6b2e",
+    "商業簿記": "solid",
+    "会計学":   "solid",
+    "工業簿記": "outline",
+    "原価計算": "outline",
+  },
+
+  // スタート画面の文言（自由に書き換えてよい）
+  startScreen: {
+    eyebrow: "日商簿記1級",
+    title: "ランダム小テスト",
+    tagline: "スキマ時間に10問。計算は自分の手で解く。",
+    features: [
+      ["計算問題は記述式", "数字を入力して答える。よくある間違え方も指摘"],
+      ["実務電卓の配置の電卓", "GT・メモリー・％・税込・税抜にも対応"],
+      ["手書きの下書き欄", "ボックス図やT勘定をその場で書ける"],
+    ],
+    note: "問題はすべてオリジナルです。",
   },
 
   // 画面の配色（上書き用・ライトモードのみ）。この行を消しても既定の色で動きます。
@@ -2120,7 +2149,10 @@ function checkConfig(raw) {
         gtIncludesAddSub: !(c.calculator && c.calculator.gtIncludesAddSub === false),
         taxRate: c.calculator && typeof c.calculator.taxRate === "number" && c.calculator.taxRate >= 0 ? c.calculator.taxRate : 0.1,
       },
+      scratchpad: { enabled: !(c.scratchpad && c.scratchpad.enabled === false) },
       categoryColors: c.categoryColors && typeof c.categoryColors === "object" ? c.categoryColors : {},
+      startScreen: Object.assign({ eyebrow: "", title: isText(c.appTitle) ? c.appTitle : "ランダム小テスト", tagline: "", features: [], note: "" },
+        c.startScreen && typeof c.startScreen === "object" ? c.startScreen : {}),
       theme: c.theme && typeof c.theme === "object" ? c.theme : {},
     },
   };
@@ -2693,13 +2725,18 @@ function createCalculator(options) {
     document.head.appendChild(themeStyle);
   }
 
-  const state = { screen: "start", items: [], index: 0, selected: null, answered: false, records: [], prevIds: [], calcOpen: cfg.calculator.startOpen };
+  const state = { screen: "start", items: [], index: 0, selected: null, answered: false, records: [], prevIds: [], calcOpen: cfg.calculator.startOpen, scratchOpen: false };
   let view = null; // 出題画面の要素への参照
 
   // ---- 表示用の小さな関数 ----
+  // 区分のバッジ：CONFIG.categoryColors の "solid"／"outline" をクラスに、色コードなら地の色にする
+  function badgeKind(category) {
+    const c = cfg.categoryColors[category];
+    return c === "solid" || c === "outline" ? c : "";
+  }
   function badgeStyle(category) {
     const c = cfg.categoryColors[category];
-    return c ? "background:" + c : null;
+    return typeof c === "string" && c.startsWith("#") ? "background:" + c + ";color:#fff" : null;
   }
 
   // 短い2択（〇×）は横並びの大きなボタンにする
@@ -2737,34 +2774,57 @@ function createCalculator(options) {
       lines.length > shown.length ? h("p", null, "…ほか" + (lines.length - shown.length) + "件（全件はブラウザのコンソールに出力しています）") : null);
   }
 
+  // ---- 表示（自動・ライト・ダーク）：選んだ結果は端末に保存。「自動」は端末の設定に合わせる ----
+  const THEME_KEY = "boki1_quiz_theme";
+  function currentThemeMode() {
+    const t = document.documentElement.getAttribute("data-theme");
+    return t === "light" || t === "dark" ? t : "auto";
+  }
+  function setThemeMode(mode) {
+    if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", mode);
+    try { if (mode === "auto") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, mode); } catch (e) { /* 保存できない環境では、その場の切り替えだけ */ }
+  }
+  function themeSwitch() {
+    const modes = [["auto", "自動"], ["light", "ライト"], ["dark", "ダーク"]];
+    const btns = modes.map(([m, label]) => h("button", { type: "button", class: "seg-btn", "aria-pressed": String(currentThemeMode() === m), onclick: () => {
+      setThemeMode(m);
+      btns.forEach((b, i) => b.setAttribute("aria-pressed", String(modes[i][0] === m)));
+    } }, label));
+    return h("div", { class: "seg", role: "group", "aria-label": "表示（ライト・ダーク）" }, h("span", { class: "seg-label" }, "表示"), btns);
+  }
+
   function renderStart() {
     state.screen = "start";
     const counts = new Map();
     pool.forEach((q) => counts.set(q.category, (counts.get(q.category) || 0) + 1));
     const size = Math.min(cfg.quizSize, pool.length);
+    const ss = cfg.startScreen;
 
-    const ledger = pool.length === 0 ? null : h("table", { class: "ledger" },
-      h("thead", null, h("tr", null, h("th", null, "区分"), h("th", null, "問題数"))),
-      h("tbody", null, [...counts].map(([c, n]) =>
-        h("tr", null,
-          h("td", null, h("span", { class: "dot", style: badgeStyle(c) }), c),
-          h("td", null, String(n))))),
-      h("tfoot", null, h("tr", null, h("td", null, "合計"), h("td", null, String(pool.length)))));
+    const cats = pool.length === 0 ? null : h("div", { class: "cats", "aria-label": "区分別の問題数" },
+      [...counts].map(([c, n]) => h("div", { class: "cat" },
+        h("span", { class: "cat-name" }, h("span", { class: "dot " + badgeKind(c), style: badgeStyle(c) }), c),
+        h("span", { class: "cat-n" }, String(n)))));
 
     app.replaceChildren(
-      h("main", { class: "main center" },
-        h("section", { class: "card" },
-          h("h1", { class: "title" }, cfg.appTitle),
-          h("p", { class: "lead" }, pool.length ? "全" + pool.length + "問からランダムに" + size + "問を出題します。" : "出題できる問題がありません。"),
-          ledger,
-          h("p", { class: "hint" }, "PCでは数字キーで選択、Enterで決定できます。")),
-        diagnostics()),
-      h("div", { class: "actions" },
-        h("button", { type: "button", class: "btn", disabled: pool.length === 0, onclick: startQuiz }, "スタート")),
-      h("p", { class: "footer-link" },
-        h("a", { href: "./privacy.html" }, "プライバシーポリシー"),
-        "　・　",
-        h("a", { href: "https://forms.gle/JhxF2obc9FqizW1g9", target: "_blank", rel: "noopener" }, "お問い合わせ")));
+      h("main", { class: "main start" },
+        h("section", { class: "hero" },
+          ss.eyebrow ? h("p", { class: "eyebrow" }, ss.eyebrow) : null,
+          h("h1", { class: "title" }, ss.title),
+          ss.tagline ? h("p", { class: "tagline" }, ss.tagline) : null,
+          h("button", { type: "button", class: "btn", disabled: pool.length === 0, onclick: startQuiz }, size + "問スタート"),
+          h("p", { class: "lead" }, pool.length ? "全" + pool.length + "問からランダムに" + size + "問を出題します。" : "出題できる問題がありません。")),
+        Array.isArray(ss.features) && ss.features.length ? h("ul", { class: "features" },
+          ss.features.map(([t, d]) => h("li", null, h("strong", null, t), d ? h("span", null, d) : null))) : null,
+        cats,
+        diagnostics(),
+        h("footer", { class: "start-foot" },
+          themeSwitch(),
+          ss.note ? h("p", { class: "foot-note" }, ss.note) : null,
+          h("p", { class: "footer-link" },
+            h("a", { href: "./privacy.html" }, "プライバシーポリシー"),
+            "　・　",
+            h("a", { href: "https://forms.gle/JhxF2obc9FqizW1g9", target: "_blank", rel: "noopener" }, "お問い合わせ")))));
     window.scrollTo(0, 0);
   }
 
@@ -2855,7 +2915,121 @@ function createCalculator(options) {
     });
     paintToggle();
     sync();
-    return h("div", { class: "calc-wrap" }, toggle, panel);
+    return { toggle, panel };
+  }
+
+  // ---- 下書き欄（手書き。ペン・消しゴム・1つ戻す・全消去。問題ごとに白紙に戻る） ----
+  // 線は「点の列」として覚えておき、ライト/ダークの切り替えや画面サイズの変更のたびに描き直す
+  let activeScratch = null; // 表示中の下書き欄（描き直し用）
+  function buildScratch() {
+    const strokes = [];
+    let mode = "pen", cur = null, penSeen = false;
+    const canvas = h("canvas", { class: "scratch-canvas", role: "img", "aria-label": "下書き欄（指やペンで書けます）" });
+    const g = canvas.getContext("2d");
+    const ink = () => getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#1c1712";
+
+    function setup(st) {
+      g.globalCompositeOperation = st.mode === "eraser" ? "destination-out" : "source-over";
+      g.strokeStyle = g.fillStyle = ink();
+      g.lineWidth = st.w;
+      g.lineCap = "round";
+      g.lineJoin = "round";
+    }
+    function drawDot(st, pt) { setup(st); g.beginPath(); g.arc(pt[0], pt[1], st.w / 2, 0, Math.PI * 2); g.fill(); }
+    function drawSeg(st, a, b) { setup(st); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); }
+    function drawStroke(st) {
+      drawDot(st, st.pts[0]);
+      for (let i = 1; i < st.pts.length; i++) drawSeg(st, st.pts[i - 1], st.pts[i]);
+    }
+    function redraw() {
+      g.save();
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, canvas.width, canvas.height);
+      g.restore();
+      strokes.forEach(drawStroke);
+      g.globalCompositeOperation = "source-over";
+    }
+    // キャンバスの画素数を、表示サイズ×画面の解像度に合わせる（Retinaでも線がにじまないように）
+    function fit() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth, ht = canvas.clientHeight;
+      if (!w || !ht) return;
+      const W = Math.round(w * dpr), H = Math.round(ht * dpr);
+      if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      redraw();
+    }
+    const at = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "pen") penSeen = true;
+      else if (e.pointerType === "touch" && penSeen) return; // ペンを使い始めたら、手のひらが触れても線を引かない
+      if (e.button > 0 || cur) return;
+      e.preventDefault();
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 未対応のブラウザでは無視 */ }
+      cur = { mode, w: mode === "eraser" ? 22 : (e.pointerType === "pen" ? 2.2 : 2.6), pts: [at(e)], id: e.pointerId };
+      strokes.push(cur);
+      drawDot(cur, cur.pts[0]);
+      paintTools();
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!cur || e.pointerId !== cur.id) return;
+      e.preventDefault();
+      const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+      list.forEach((ev) => {
+        const pt = at(ev);
+        drawSeg(cur, cur.pts[cur.pts.length - 1], pt);
+        cur.pts.push(pt);
+      });
+    });
+    const end = (e) => { if (cur && e.pointerId === cur.id) cur = null; };
+    canvas.addEventListener("pointerup", end);
+    canvas.addEventListener("pointercancel", end);
+
+    const toolBtn = (label, aria, onclick) => h("button", { type: "button", class: "st", "aria-label": aria, onclick }, label);
+    const penBtn = toolBtn("ペン", "ペン", () => { mode = "pen"; paintTools(); });
+    const eraserBtn = toolBtn("消しゴム", "消しゴム", () => { mode = "eraser"; paintTools(); });
+    const undoBtn = toolBtn("戻す", "1つ戻す", () => { if (cur) return; strokes.pop(); redraw(); paintTools(); });
+    const clearBtn = toolBtn("全消去", "下書きを全部消す", () => { if (cur) return; strokes.length = 0; redraw(); paintTools(); });
+    function paintTools() {
+      penBtn.setAttribute("aria-pressed", String(mode === "pen"));
+      eraserBtn.setAttribute("aria-pressed", String(mode === "eraser"));
+      undoBtn.disabled = strokes.length === 0;
+      clearBtn.disabled = strokes.length === 0;
+    }
+
+    const panel = h("div", { class: "scratch", role: "group", "aria-label": "下書き", hidden: !state.scratchOpen },
+      h("div", { class: "scratch-tools" }, penBtn, eraserBtn, undoBtn, clearBtn),
+      canvas,
+      h("p", { class: "scratch-hint" }, "指やペンで書けます。下書き欄の外を触るとスクロールできます。次の問題では白紙に戻ります。"));
+
+    const toggle = h("button", { type: "button", class: "scratch-toggle", "aria-expanded": String(state.scratchOpen) });
+    function paintToggle() {
+      toggle.textContent = state.scratchOpen ? "下書きを閉じる　▴" : "下書きを開く　▾";
+      toggle.setAttribute("aria-expanded", String(state.scratchOpen));
+      panel.hidden = !state.scratchOpen;
+    }
+    toggle.addEventListener("click", () => {
+      state.scratchOpen = !state.scratchOpen;
+      paintToggle();
+      if (state.scratchOpen) {
+        requestAnimationFrame(fit); // 表示されてから大きさが決まるので、次の描画タイミングで合わせる
+        panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+      }
+    });
+    paintToggle();
+    paintTools();
+    activeScratch = { fit, redraw, strokes };
+    return { toggle, panel };
+  }
+  // 画面サイズの変更・ライト/ダークの切り替えで、表示中の下書き欄を描き直す（登録は1回だけ）
+  window.addEventListener("resize", () => { if (activeScratch) activeScratch.fit(); });
+  new MutationObserver(() => { if (activeScratch) activeScratch.redraw(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onScheme = () => { if (activeScratch) activeScratch.redraw(); };
+    if (mq.addEventListener) mq.addEventListener("change", onScheme); else if (mq.addListener) mq.addListener(onScheme);
   }
 
   // ---- 出題画面 ----
@@ -2869,11 +3043,25 @@ function createCalculator(options) {
     renderQuiz();
   }
 
+  // 問題文の下に「下書き」「電卓」の開閉ボタンを横に並べ、開いたパネルをその下に出す。
+  // 下書き欄は、問題文を見ながら書き写しやすいよう、電卓より上（問題文の直下）に置く
+  function buildTools() {
+    const calc = cfg.calculator.enabled ? buildCalculator() : null;
+    const scratch = cfg.scratchpad.enabled ? buildScratch() : null;
+    if (!calc && !scratch) return null;
+    return h("div", { class: "calc-wrap" },
+      h("div", { class: "tool-toggles" + (calc && scratch ? " two" : "") }, scratch ? scratch.toggle : null, calc ? calc.toggle : null),
+      scratch ? scratch.panel : null,
+      calc ? calc.panel : null);
+  }
+
   function renderQuiz() {
     state.screen = "quiz";
     state.selected = null;
     state.answered = false;
     state.calcOpen = cfg.calculator.startOpen; // 電卓は、各問題を「閉じた状態」で始める（前の問題で開いていても引き継がない）
+    state.scratchOpen = false;                  // 下書き欄も、各問題を閉じた・白紙の状態で始める
+    activeScratch = null;
     const item = state.items[state.index];
     const q = item.q;
     const total = state.items.length;
@@ -2920,7 +3108,7 @@ function createCalculator(options) {
     const action = h("button", { type: "button", class: "btn", disabled: true, onclick: onAction }, "回答");
     const root = h("section", { class: "card" },
       h("p", { class: "q" }, q.question),
-      cfg.calculator.enabled ? buildCalculator() : null,
+      buildTools(),
       isInput
         ? h("div", { class: "answer-input" }, h("p", { class: "input-hint" }, "答えの数値を入力してください（カンマはあってもなくても構いません）"), fields.map((f) => f.el))
         : h("div", { class: "options" + (compact ? " ox" : ""), role: "radiogroup", "aria-label": "選択肢" }, options),
@@ -2931,7 +3119,7 @@ function createCalculator(options) {
       h("header", { class: "top" },
         h("div", { class: "top-row" },
           h("span", { class: "count" }, "第" + (state.index + 1) + "問 / " + total + "問"),
-          h("span", { class: "badge", style: badgeStyle(q.category) }, q.category)),
+          h("span", { class: "badge " + badgeKind(q.category), style: badgeStyle(q.category) }, q.category)),
         h("div", { class: "steps", role: "progressbar", "aria-label": "進捗", "aria-valuemin": 1, "aria-valuemax": total, "aria-valuenow": state.index + 1 }, steps)),
       h("main", { class: "main" }, root),
       h("div", { class: "actions" }, action));
@@ -3053,7 +3241,7 @@ function createCalculator(options) {
         const q = r.item.q;
         return h("details", { class: "rev" },
           h("summary", null,
-            h("span", { class: "badge", style: badgeStyle(q.category) }, q.category),
+            h("span", { class: "badge " + badgeKind(q.category), style: badgeStyle(q.category) }, q.category),
             h("span", { class: "sum-text" }, q.question)),
           h("div", { class: "rev-body" },
             h("p", { class: "q" }, q.question),
