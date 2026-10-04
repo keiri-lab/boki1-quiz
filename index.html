@@ -367,6 +367,7 @@
   .tool-toggles { display: grid; gap: 8px; }
   .tool-toggles.two { grid-template-columns: 1fr 1fr; }
   .tool-toggles .calc-toggle, .tool-toggles .scratch-toggle { padding: 0 8px; }
+  .scratch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .scratch { margin-top: 10px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); scroll-margin-top: 84px; scroll-margin-bottom: 96px; }
   .scratch[hidden] { display: none; }
   .scratch-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
@@ -411,7 +412,8 @@
     -webkit-user-select: none;
     user-select: none;
   }
-  .ck:active { transform: scale(0.96); }
+  .ck:active, .ck.pressing { transform: scale(0.94); filter: brightness(0.9); }
+  .calc-keys { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .ck.fn { border-color: transparent; background: var(--primary-bg); color: var(--primary); font-size: 0.88rem; }
   .ck.op { color: var(--primary); font-size: 1.25rem; }
   .ck.eq { border-color: var(--primary); background: var(--primary); color: var(--primary-text); font-size: 1.25rem; }
@@ -3433,13 +3435,42 @@ function createCalculator(options) {
       sync();
     }
 
+    // キーの反応：click ではなく pointer イベントで受け付ける。
+    //   ・前のキーから指を離す前に次のキーを押しても、どちらも確実に入力される（iPhoneでは click が取りこぼされることがある）
+    //   ・押した瞬間に見た目を変え、指を離した時点で入力する（指を滑らせてスクロールしたときは入力しない）
+    //   ・キーボードで Enter／スペースを押したとき（click だけが届く）も入力できるよう、click も受ける
     const keys = CALC_KEYS.map((def) => {
       if (def === null) return h("span", { class: "ck-gap", "aria-hidden": "true" });
       const [key, label, kind] = def;
-      return h("button", {
+      const btn = h("button", {
         type: "button", class: "ck " + kind, "aria-label": CALC_LABELS[key] || label, title: CALC_LABELS[key] || null,
-        onclick: () => press(key),
       }, label);
+      const downs = new Map(); // pointerId → 押した位置
+      let lastPointerPress = 0;
+      const release = (id) => { downs.delete(id); if (downs.size === 0) btn.classList.remove("pressing"); };
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.button > 0) return;
+        downs.set(e.pointerId, [e.clientX, e.clientY]);
+        btn.classList.add("pressing");
+      });
+      btn.addEventListener("pointerup", (e) => {
+        const at = downs.get(e.pointerId);
+        release(e.pointerId);
+        if (!at) return;
+        const r = btn.getBoundingClientRect();
+        const inside = e.clientX >= r.left - 8 && e.clientX <= r.right + 8 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
+        if (!inside || Math.hypot(e.clientX - at[0], e.clientY - at[1]) > 24) return; // 指を大きく滑らせたときは入力しない
+        lastPointerPress = Date.now();
+        press(key);
+      });
+      btn.addEventListener("pointercancel", (e) => release(e.pointerId)); // スクロールが始まったときなど
+      btn.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") release(e.pointerId); });
+      btn.addEventListener("click", () => {
+        if (Date.now() - lastPointerPress < 700) return; // すでに pointer で入力済み（同じ操作の click は無視）
+        press(key);
+      });
+      btn.addEventListener("contextmenu", (e) => e.preventDefault()); // 長押しでメニューを出さない
+      return btn;
     });
 
     const panel = h("div", { class: "calc", tabindex: "-1", role: "group", "aria-label": "電卓", hidden: !state.calcOpen },
@@ -3539,6 +3570,15 @@ function createCalculator(options) {
       });
     });
     const end = (e) => { if (cur && e.pointerId === cur.id) cur = null; };
+    // iPhone・iPadでは、指やペンを置いたまま止めると「長押し」と判定され、文字の選択・拡大ルーペ・メニューが出ることがある。
+    // タッチ操作の既定の動作を止めて、下書き欄の上では線を書くことだけに使う
+    const stopDefault = (e) => { if (e.cancelable) e.preventDefault(); };
+    canvas.addEventListener("touchstart", stopDefault, { passive: false });
+    canvas.addEventListener("touchmove", stopDefault, { passive: false });
+    canvas.addEventListener("touchend", stopDefault, { passive: false });
+    canvas.addEventListener("contextmenu", stopDefault);
+    canvas.addEventListener("selectstart", stopDefault);
+    canvas.addEventListener("dragstart", stopDefault);
     canvas.addEventListener("pointerup", end);
     canvas.addEventListener("pointercancel", end);
 
