@@ -414,6 +414,14 @@
     touch-action: none; cursor: crosshair;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
+  .scratch-board { position: relative; }
+  .scratch-home {
+    position: absolute; top: 8px; right: 8px; min-height: 34px; padding: 0 10px;
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--card); color: var(--text);
+    font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; touch-action: manipulation;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+  .scratch-home[hidden] { display: none; }
   .scratch-hint { margin: 6px 0 0; font-size: 0.72rem; line-height: 1.5; color: var(--muted); }
   .calc:focus { outline: none; }
   .calc-display { margin-bottom: 10px; padding: 4px 12px 6px; border: 1px solid var(--rule); border-radius: 3px; background: var(--card); }
@@ -566,9 +574,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "5.1",
-  updated: "2026-10-07",
+  version: "5.2",
+  updated: "2026-10-09",
   changelog: [
+    ["2026-10-09", "下書き欄を2本指で動かせるように（「元の位置へ」で戻せます）"],
     ["2026-10-07", "問題文の誤字と、他の問題を前提にした書き方を修正"],
     ["2026-10-06", "問題を48問追加（全208問）。どの論点も10問以上に"],
     ["2026-10-06", "出題の途中でもトップに戻れるボタンを追加"],
@@ -4403,6 +4412,12 @@ function createCalculator(options) {
   function buildScratch() {
     const strokes = [];
     let mode = "pen", cur = null, penSeen = false;
+    // 2本指で動かす（フリーボードのように）。view は「書いた内容を画面上でどれだけずらして見せているか」（CSSピクセル）
+    const view = { x: 0, y: 0 };
+    const touches = new Map(); // 画面に触れている指（pointerId → [x, y]）
+    let pan = null;            // 2本指で動かしている最中の情報
+    let panLock = false;       // 動かし終わって指が残っている間は、線を引かない
+    let dpr = 1;
     const canvas = h("canvas", { class: "scratch-canvas", role: "img", "aria-label": "下書き欄（指やペンで書けます）" });
     const g = canvas.getContext("2d");
     const ink = () => getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#1c1712";
@@ -4420,38 +4435,75 @@ function createCalculator(options) {
       drawDot(st, st.pts[0]);
       for (let i = 1; i < st.pts.length; i++) drawSeg(st, st.pts[i - 1], st.pts[i]);
     }
+    // 画面の解像度とずらし量を、描画の座標変換にまとめて反映する（方眼も同じだけずらす）
+    function applyView() {
+      g.setTransform(dpr, 0, 0, dpr, view.x * dpr, view.y * dpr);
+      canvas.style.backgroundPosition = view.x + "px " + view.y + "px";
+      homeBtn.hidden = !view.x && !view.y;
+    }
     function redraw() {
       g.save();
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, canvas.width, canvas.height);
       g.restore();
+      applyView();
       strokes.forEach(drawStroke);
       g.globalCompositeOperation = "source-over";
     }
     // キャンバスの画素数を、表示サイズ×画面の解像度に合わせる（Retinaでも線がにじまないように）
     function fit() {
-      const dpr = window.devicePixelRatio || 1;
+      dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth, ht = canvas.clientHeight;
       if (!w || !ht) return;
       const W = Math.round(w * dpr), H = Math.round(ht * dpr);
       if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
       redraw();
     }
-    const at = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    // 書いた内容の座標（ずらし量を差し引く）。線はこの座標で覚えるので、動かしても形は変わらない
+    const at = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left - view.x, e.clientY - r.top - view.y]; };
+    const mid = () => { const [a, b] = [...touches.values()]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
 
     canvas.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch") {
+        touches.set(e.pointerId, [e.clientX, e.clientY]);
+        if (touches.size >= 2 || panLock) {
+          e.preventDefault();
+          try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 未対応のブラウザでは無視 */ }
+          if (cur && cur.pen) return; // ペンで書いている最中は、手のひらが触れても動かさない
+          if (touches.size === 2 && !pan) {
+            // 1本目の指で線を書き始めていたら：置いてすぐなら「2本指の操作」とみなして取り消し、しばらく書いた後なら線として残す
+            if (cur) {
+              if (performance.now() - cur.t0 < 300) { strokes.splice(strokes.indexOf(cur), 1); }
+              cur = null;
+              redraw();
+              paintTools();
+            }
+            pan = { m: mid(), x: view.x, y: view.y };
+            panLock = true;
+          }
+          return;
+        }
+      }
       if (e.pointerType === "pen") penSeen = true;
       else if (e.pointerType === "touch" && penSeen) return; // ペンを使い始めたら、手のひらが触れても線を引かない
       if (e.button > 0 || cur) return;
       e.preventDefault();
       try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 未対応のブラウザでは無視 */ }
-      cur = { mode, w: mode === "eraser" ? 22 : (e.pointerType === "pen" ? 2.2 : 2.6), pts: [at(e)], id: e.pointerId };
+      cur = { mode, w: mode === "eraser" ? 22 : (e.pointerType === "pen" ? 2.2 : 2.6), pts: [at(e)], id: e.pointerId, pen: e.pointerType === "pen", t0: performance.now() };
       strokes.push(cur);
       drawDot(cur, cur.pts[0]);
       paintTools();
     });
     canvas.addEventListener("pointermove", (e) => {
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pan && touches.size >= 2) {
+        e.preventDefault();
+        const m = mid();
+        view.x = Math.round(pan.x + m[0] - pan.m[0]);
+        view.y = Math.round(pan.y + m[1] - pan.m[1]);
+        redraw();
+        return;
+      }
       if (!cur || e.pointerId !== cur.id) return;
       e.preventDefault();
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
@@ -4461,7 +4513,12 @@ function createCalculator(options) {
         cur.pts.push(pt);
       });
     });
-    const end = (e) => { if (cur && e.pointerId === cur.id) cur = null; };
+    const end = (e) => {
+      if (cur && e.pointerId === cur.id) cur = null;
+      touches.delete(e.pointerId);
+      if (touches.size < 2) pan = null;        // 2本指の片方を離したら動かすのをやめる
+      if (touches.size === 0) panLock = false; // 指が全部離れたら、また線を引けるようにする
+    };
     // iPhone・iPadでは、指やペンを置いたまま止めると「長押し」と判定され、文字の選択・拡大ルーペ・メニューが出ることがある。
     // タッチ操作の既定の動作を止めて、下書き欄の上では線を書くことだけに使う
     const stopDefault = (e) => { if (e.cancelable) e.preventDefault(); };
@@ -4479,6 +4536,7 @@ function createCalculator(options) {
     const eraserBtn = toolBtn("消しゴム", "消しゴム", () => { mode = "eraser"; paintTools(); });
     const undoBtn = toolBtn("戻す", "1つ戻す", () => { if (cur) return; strokes.pop(); redraw(); paintTools(); });
     const clearBtn = toolBtn("全消去", "下書きを全部消す", () => { if (cur) return; strokes.length = 0; redraw(); paintTools(); });
+    const homeBtn = h("button", { type: "button", class: "scratch-home", hidden: true, onclick: () => { view.x = 0; view.y = 0; redraw(); } }, "元の位置へ");
     function paintTools() {
       penBtn.setAttribute("aria-pressed", String(mode === "pen"));
       eraserBtn.setAttribute("aria-pressed", String(mode === "eraser"));
@@ -4488,8 +4546,8 @@ function createCalculator(options) {
 
     const panel = h("div", { class: "scratch", role: "group", "aria-label": "下書き", hidden: !state.scratchOpen },
       h("div", { class: "scratch-tools" }, penBtn, eraserBtn, undoBtn, clearBtn),
-      canvas,
-      h("p", { class: "scratch-hint" }, "指やペンで書けます。下書き欄の外を触るとスクロールできます。次の問題では白紙に戻ります。"));
+      h("div", { class: "scratch-board" }, canvas, homeBtn),
+      h("p", { class: "scratch-hint" }, "指やペンで書けます。2本指でなぞると下書き欄を動かせます。下書き欄の外を触ると画面をスクロールできます。次の問題では白紙に戻ります。"));
 
     const toggle = h("button", { type: "button", class: "scratch-toggle", "aria-expanded": String(state.scratchOpen) });
     function paintToggle() {
