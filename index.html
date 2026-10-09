@@ -322,6 +322,9 @@
   .seg { display: inline-flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; font-size: 0.82rem; }
   .seg-label { display: flex; align-items: center; padding: 0 12px; color: var(--muted); border-right: 1px solid var(--rule); }
   .seg-btn { min-height: 38px; padding: 0 14px; border: 0; background: var(--card); color: var(--text); font: inherit; cursor: pointer; touch-action: manipulation; }
+  .prefs { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 10px 14px; }
+  .seg-wrap { display: flex; flex-direction: column; align-items: center; }
+  .seg-note { margin: 4px 0 0; font-size: 0.7rem; color: var(--muted); }
   .seg-btn + .seg-btn { border-left: 1px solid var(--rule); }
   .seg-btn[aria-pressed="true"] { background: var(--primary); color: var(--primary-text); font-weight: 700; }
   /* 区分の見た目（試験の時間割で2種類） */
@@ -468,6 +471,25 @@
   .num-input:focus { outline: none; border-color: var(--primary); }
   .num-input.is-correct { border-color: var(--correct); background: var(--correct-bg); }
   .num-input.is-wrong { border-color: var(--wrong); background: var(--wrong-bg); }
+  .num-input.np-target { border-color: var(--primary); }
+  .numpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .numpad[hidden] { display: none; }
+  .answer-body, .answer-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  /* 横幅の広い画面（iPadなど）：回答欄とテンキーを横並びに。左右はトップ画面で選ぶ */
+  @media (min-width: 600px) {
+    .answer-body { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; gap: 18px; }
+    .answer-body.np-left { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); }
+    .answer-body.np-left .numpad { order: -1; }
+    .answer-body.np-closed { grid-template-columns: minmax(0, 1fr); }
+  }
+  .nk {
+    min-height: 50px; padding: 0; border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--card); color: var(--text); font: inherit; font-size: 1.3rem; font-weight: 600;
+    cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none;
+  }
+  .nk.fn { border-color: transparent; background: var(--primary-bg); color: var(--primary); font-size: 0.95rem; font-weight: 700; }
+  .nk.tall { grid-row: span 2; }
+  .nk:active, .nk.pressing { transform: scale(0.94); filter: brightness(0.9); }
   .unit { flex: none; min-width: 2em; font-weight: 700; color: var(--muted); }
   .chips { margin-top: 8px; }
   .chips .opt { min-height: 52px; font-size: 0.95rem; }
@@ -508,6 +530,15 @@ const CONFIG = {
 
   // 記述式の入力欄で、入力中に3桁ごとのカンマを自動で入れる（false で入れない）
   autoComma: true,
+
+  // 記述式の画面内テンキー（端末のキーボードの代わりに、回答欄の下に数字キーを出す）
+  //   "touch"  … タッチ操作できる端末（スマホ・タブレット）だけ出す（既定）
+  //   "always" … PCでも出す
+  //   "off"    … 出さない（端末のキーボードで入力）
+  numpad: "touch",
+  // 横幅の広い画面（iPadなど・幅600px以上）で、テンキーを回答欄の右・左どちらに置くかの初期値（"right" か "left"）。
+  // 受験者がトップ画面で選ぶと、その端末ではそちらが優先されます。狭い画面（スマホ縦向き）では常に回答欄の下に出します
+  numpadSide: "right",
 
   // 電卓（問題文と選択肢の間。GT・メモリー・√・00・小数点・一桁取り消しつき）
   calculator: {
@@ -574,9 +605,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "5.2",
+  version: "5.3",
   updated: "2026-10-09",
   changelog: [
+    ["2026-10-09", "記述式の答えを、画面内のテンキーで入力できるように（スマホ・タブレット。iPadなどでは回答欄の横に出し、左右はトップ画面で選べます）"],
     ["2026-10-09", "下書き欄を2本指で動かせるように（「元の位置へ」で戻せます）"],
     ["2026-10-07", "問題文の誤字と、他の問題を前提にした書き方を修正"],
     ["2026-10-06", "問題を48問追加（全208問）。どの論点も10問以上に"],
@@ -3496,6 +3528,8 @@ function checkConfig(raw) {
       scratchpad: { enabled: !(c.scratchpad && c.scratchpad.enabled === false) },
       categoryColors: c.categoryColors && typeof c.categoryColors === "object" ? c.categoryColors : {},
       autoComma: c.autoComma !== false,
+      numpad: ["touch", "always", "off"].includes(c.numpad) ? c.numpad : "touch",
+      numpadSide: c.numpadSide === "left" ? "left" : "right",
       version: isText(c.version) ? c.version : "",
       updated: isText(c.updated) ? c.updated : "",
       changelog: Array.isArray(c.changelog) ? c.changelog.filter((x) => Array.isArray(x) && isText(x[0]) && isText(x[1])) : [],
@@ -4224,6 +4258,24 @@ function createCalculator(options) {
     return h("div", { class: "seg", role: "group", "aria-label": "表示（ライト・ダーク）" }, h("span", { class: "seg-label" }, "表示"), btns);
   }
 
+  // ---- テンキーの位置（右・左）：選んだ結果は端末に保存 ----
+  const NUMPAD_SIDE_KEY = "boki1_quiz_numpad_side";
+  function numpadSide() {
+    try { const v = localStorage.getItem(NUMPAD_SIDE_KEY); if (v === "left" || v === "right") return v; } catch (e) { /* 読めない環境では設定値 */ }
+    return cfg.numpadSide;
+  }
+  function numpadSideSwitch() {
+    if (!numpadWanted()) return null; // テンキーを出さない端末（PCなど）では選択肢も出さない
+    const sides = [["left", "左"], ["right", "右"]];
+    const btns = sides.map(([v, label]) => h("button", { type: "button", class: "seg-btn", "aria-pressed": String(numpadSide() === v), onclick: () => {
+      try { localStorage.setItem(NUMPAD_SIDE_KEY, v); } catch (e) { /* 保存できない環境では何もしない */ }
+      btns.forEach((b, i) => b.setAttribute("aria-pressed", String(sides[i][0] === v)));
+    } }, label));
+    return h("div", { class: "seg-wrap" },
+      h("div", { class: "seg", role: "group", "aria-label": "テンキーの位置" }, h("span", { class: "seg-label" }, "テンキー"), btns),
+      h("p", { class: "seg-note" }, "横幅の広い画面（iPadなど）で、回答欄の横に出す位置"));
+  }
+
   // 論点別テストの一覧（CONFIG.topics の group ごとに並べる。問題が1問もない論点は出さない）
   function topicSection() {
     const list = cfg.topics.map((t) => ({ ...t, n: topicPool(t.name).length })).filter((t) => t.n > 0);
@@ -4277,7 +4329,7 @@ function createCalculator(options) {
         cats,
         diagnostics(),
         h("footer", { class: "start-foot" },
-          themeSwitch(),
+          h("div", { class: "prefs" }, themeSwitch(), numpadSideSwitch()),
           ss.note ? h("p", { class: "foot-note" }, ss.note) : null,
           h("p", { class: "footer-link" },
             h("a", { href: "./privacy.html" }, "プライバシーポリシー"),
@@ -4315,6 +4367,102 @@ function createCalculator(options) {
     "Backspace": "back", "Delete": "CCE", "Escape": "CCE", "c": "CCE", "C": "CCE", "%": "%",
   };
 
+  // キーの反応（電卓とテンキーで共通）：click ではなく pointer イベントで受け付ける。
+  //   ・前のキーから指を離す前に次のキーを押しても、どちらも確実に入力される（iPhoneでは click が取りこぼされることがある）
+  //   ・押した瞬間に見た目を変え、指を離した時点で入力する（指を滑らせてスクロールしたときは入力しない）
+  //   ・キーボードで Enter／スペースを押したとき（click だけが届く）も入力できるよう、click も受ける
+  function bindPress(btn, fn) {
+    const downs = new Map(); // pointerId → 押した位置
+    let lastPointerPress = 0;
+    const release = (id) => { downs.delete(id); if (downs.size === 0) btn.classList.remove("pressing"); };
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.button > 0) return;
+      downs.set(e.pointerId, [e.clientX, e.clientY]);
+      btn.classList.add("pressing");
+    });
+    btn.addEventListener("pointerup", (e) => {
+      const at = downs.get(e.pointerId);
+      release(e.pointerId);
+      if (!at) return;
+      const r = btn.getBoundingClientRect();
+      const inside = e.clientX >= r.left - 8 && e.clientX <= r.right + 8 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
+      if (!inside || Math.hypot(e.clientX - at[0], e.clientY - at[1]) > 24) return; // 指を大きく滑らせたときは入力しない
+      lastPointerPress = Date.now();
+      fn();
+    });
+    btn.addEventListener("pointercancel", (e) => release(e.pointerId)); // スクロールが始まったときなど
+    btn.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") release(e.pointerId); });
+    btn.addEventListener("click", () => {
+      if (Date.now() - lastPointerPress < 700) return; // すでに pointer で入力済み（同じ操作の click は無視）
+      fn();
+    });
+    btn.addEventListener("contextmenu", (e) => e.preventDefault()); // 長押しでメニューを出さない
+  }
+
+  // ---- 記述式の画面内テンキー ----
+  // iPadには数字だけのキーボードがなく、inputmode="decimal" でも通常のキーボードが出て画面の半分を覆う。
+  // そこで端末のキーボードは出さず（inputmode="none"）、回答欄の下に数字キーを出す。外付けキーボードからの入力はそのまま使える。
+  // キーを押すと入力欄の文字を書き換えて input イベントを送るので、カンマの自動挿入など入力欄の処理はキーボード入力と同じものが動く。
+  const numpadWanted = () => cfg.numpad === "always" ||
+    (cfg.numpad === "touch" && ((navigator.maxTouchPoints || 0) > 0 || (!!window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches)));
+  function buildNumpad(fields) {
+    let active = 0;
+    const sel = fields.map(() => null); // 入力欄から離れたときのカーソル位置
+    const setActive = (i) => {
+      active = i;
+      fields.forEach((f, k) => f.inp.classList.toggle("np-target", k === i));
+    };
+    fields.forEach((f, i) => {
+      f.inp.addEventListener("focus", () => {
+        setActive(i);
+        // 欄を触って選んだときは、カーソルを末尾に置く（右寄せの欄の左側を触ると先頭に入ってしまうため）。選んだ後に触り直せば途中にも置ける
+        setTimeout(() => { if (document.activeElement === f.inp) { const n = f.inp.value.length; try { f.inp.setSelectionRange(n, n); } catch (e) { /* 無視 */ } } }, 0);
+      });
+      f.inp.addEventListener("blur", () => { sel[i] = [f.inp.selectionStart, f.inp.selectionEnd]; });
+    });
+    function type(key) {
+      if (state.answered) return;
+      const inp = fields[active].inp;
+      if (key === "next") {
+        setActive((active + 1) % fields.length);
+        fields[active].inp.focus({ preventScroll: true });
+        return;
+      }
+      const v = inp.value;
+      let a = v.length, b = v.length;
+      const saved = document.activeElement === inp ? [inp.selectionStart, inp.selectionEnd] : sel[active];
+      if (saved && saved[0] !== null && saved[1] !== null) { a = Math.min(saved[0], v.length); b = Math.min(saved[1], v.length); }
+      let nv, caret;
+      if (key === "bs") {
+        if (a === b) { if (a === 0) return; a -= 1; }
+        nv = v.slice(0, a) + v.slice(b); caret = a;
+      } else if (key === "clr") {
+        if (!v) return;
+        nv = ""; caret = 0;
+      } else {
+        nv = v.slice(0, a) + key + v.slice(b); caret = a + key.length;
+      }
+      inp.value = nv;
+      try { inp.setSelectionRange(caret, caret); } catch (e) { /* 対応していない環境では無視 */ }
+      inp.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: key === "bs" || key === "clr" ? "deleteContentBackward" : "insertText" }));
+      sel[active] = [inp.selectionStart, inp.selectionEnd];
+    }
+    const multi = fields.length > 1;
+    const defs = [["7"], ["8"], ["9"], ["bs", "⌫", multi ? "fn" : "fn tall", "1文字消す"],
+      ["4"], ["5"], ["6"], ...(multi ? [["clr", "クリア", "fn", "この欄を全部消す"]] : []),
+      ["1"], ["2"], ["3"], multi ? ["next", "次の欄", "fn tall", "次の入力欄へ"] : ["clr", "クリア", "fn tall", "この欄を全部消す"],
+      ["0"], ["00"], [".", "．", "", "小数点"]];
+    const keys = defs.map(([key, label, kind, aria]) => {
+      const btn = h("button", { type: "button", class: "nk " + (kind || ""), "aria-label": aria || key, tabindex: "-1" }, label || key);
+      btn.addEventListener("mousedown", (e) => e.preventDefault()); // 押しても入力欄からカーソルが外れないように
+      bindPress(btn, () => type(key));
+      return btn;
+    });
+    const pad = h("div", { class: "numpad", role: "group", "aria-label": "テンキー" }, keys);
+    setActive(0);
+    return pad;
+  }
+
   function buildCalculator() {
     const calc = createCalculator(cfg.calculator);
     const flagM = h("span", { class: "flag" }, "M");
@@ -4336,41 +4484,13 @@ function createCalculator(options) {
       sync();
     }
 
-    // キーの反応：click ではなく pointer イベントで受け付ける。
-    //   ・前のキーから指を離す前に次のキーを押しても、どちらも確実に入力される（iPhoneでは click が取りこぼされることがある）
-    //   ・押した瞬間に見た目を変え、指を離した時点で入力する（指を滑らせてスクロールしたときは入力しない）
-    //   ・キーボードで Enter／スペースを押したとき（click だけが届く）も入力できるよう、click も受ける
     const keys = CALC_KEYS.map((def) => {
       if (def === null) return h("span", { class: "ck-gap", "aria-hidden": "true" });
       const [key, label, kind] = def;
       const btn = h("button", {
         type: "button", class: "ck " + kind, "aria-label": CALC_LABELS[key] || label, title: CALC_LABELS[key] || null,
       }, label);
-      const downs = new Map(); // pointerId → 押した位置
-      let lastPointerPress = 0;
-      const release = (id) => { downs.delete(id); if (downs.size === 0) btn.classList.remove("pressing"); };
-      btn.addEventListener("pointerdown", (e) => {
-        if (e.button > 0) return;
-        downs.set(e.pointerId, [e.clientX, e.clientY]);
-        btn.classList.add("pressing");
-      });
-      btn.addEventListener("pointerup", (e) => {
-        const at = downs.get(e.pointerId);
-        release(e.pointerId);
-        if (!at) return;
-        const r = btn.getBoundingClientRect();
-        const inside = e.clientX >= r.left - 8 && e.clientX <= r.right + 8 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
-        if (!inside || Math.hypot(e.clientX - at[0], e.clientY - at[1]) > 24) return; // 指を大きく滑らせたときは入力しない
-        lastPointerPress = Date.now();
-        press(key);
-      });
-      btn.addEventListener("pointercancel", (e) => release(e.pointerId)); // スクロールが始まったときなど
-      btn.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") release(e.pointerId); });
-      btn.addEventListener("click", () => {
-        if (Date.now() - lastPointerPress < 700) return; // すでに pointer で入力済み（同じ操作の click は無視）
-        press(key);
-      });
-      btn.addEventListener("contextmenu", (e) => e.preventDefault()); // 長押しでメニューを出さない
+      bindPress(btn, () => press(key));
       return btn;
     });
 
@@ -4660,12 +4780,13 @@ function createCalculator(options) {
 
     // 記述式：数値の入力欄（必要なら2択も）。単位は入力欄の右に固定表示
     let fields = [];
+    const useNumpad = isInput && numpadWanted();
     if (isInput) {
       state.responses = q.input.map(() => ({ raw: "", choice: null }));
       fields = q.input.map((p, i) => {
         const id = "ans" + i;
         const inp = h("input", {
-          id, type: "text", inputmode: "decimal", autocomplete: "off", spellcheck: "false", class: "num-input",
+          id, type: "text", inputmode: useNumpad ? "none" : "decimal", autocomplete: "off", spellcheck: "false", class: "num-input",
           "aria-label": (p.label || "答え") + (p.unit ? "（単位：" + p.unit + "）" : ""),
         });
         let composing = false, prevVal = "";
@@ -4701,17 +4822,22 @@ function createCalculator(options) {
       });
     }
 
+    const numpad = useNumpad ? buildNumpad(fields) : null;
     const slot = h("div", { class: "slot", "aria-live": "polite" });
     const action = h("button", { type: "button", class: "btn", disabled: true, onclick: onAction }, "回答");
     const root = h("section", { class: "card" },
       h("p", { class: "q" }, q.question),
       buildTools(),
       isInput
-        ? h("div", { class: "answer-input" }, h("p", { class: "input-hint" }, "答えの数値を入力してください（カンマはあってもなくても構いません）"), fields.map((f) => f.el))
+        ? h("div", { class: "answer-input" },
+          h("p", { class: "input-hint" }, useNumpad ? "下のテンキーで答えの数値を入力してください（カンマは自動で入ります）" : "答えの数値を入力してください（カンマはあってもなくても構いません）"),
+          numpad
+            ? h("div", { class: "answer-body np-" + numpadSide() }, h("div", { class: "answer-fields" }, fields.map((f) => f.el)), numpad)
+            : fields.map((f) => f.el))
         : h("div", { class: "options" + (compact ? " ox" : ""), role: "radiogroup", "aria-label": "選択肢" }, options),
       slot);
 
-    view = { root, options, slot, action, steps, fields, isInput };
+    view = { root, options, slot, action, steps, fields, isInput, numpad };
     app.replaceChildren(
       h("header", { class: "top" },
         h("div", { class: "top-row" },
@@ -4762,8 +4888,10 @@ function createCalculator(options) {
     state.records.push({ item, correct: res.correct, responses, yourText: inputResponseText(q, responses) });
 
     view.root.classList.add("locked");
+    if (view.numpad) { view.numpad.hidden = true; view.numpad.parentNode.classList.add("np-closed"); } // 回答後はテンキーを閉じ、回答欄を横いっぱいに戻す
     view.fields.forEach((f, i) => {
       f.inp.readOnly = true;
+      f.inp.classList.remove("np-target");
       f.inp.classList.add(res.parts[i].numOk ? "is-correct" : "is-wrong");
       const p = q.input[i];
       f.chips.forEach((el, ci) => {
