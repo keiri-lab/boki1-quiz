@@ -451,6 +451,11 @@
     user-select: none;
   }
   .ck:active, .ck.pressing { transform: scale(0.94); filter: brightness(0.9); }
+  /* iPadなど（幅600px以上）：キーを高くし、キーの上ではスクロールさせない（触れた瞬間に入力するため） */
+  @media (min-width: 600px) {
+    .calc-keys, .numpad, .calc-keys .ck, .numpad .nk { touch-action: none; }
+    .calc-keys .ck, .calc-keys .ck-gap, .numpad .nk { min-height: 56px; }
+  }
   .calc-keys { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .ck.fn { border-color: transparent; background: var(--primary-bg); color: var(--primary); font-size: 0.88rem; }
   .ck.op { color: var(--primary); font-size: 1.25rem; }
@@ -472,15 +477,41 @@
   .num-input.is-correct { border-color: var(--correct); background: var(--correct-bg); }
   .num-input.is-wrong { border-color: var(--wrong); background: var(--wrong-bg); }
   .num-input.np-target { border-color: var(--primary); }
+  .num-input.long { font-size: 1.1rem; }
+  /* テンキーのキー配置。4列（広い画面・とても狭い画面）と3列（スマホで横並びのとき）の2通り */
   .numpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .numpad.single { grid-template-areas: "k7 k8 k9 bs" "k4 k5 k6 bs" "k1 k2 k3 clr" "k0 k00 dot clr"; }
+  .numpad.multi  { grid-template-areas: "k7 k8 k9 bs" "k4 k5 k6 clr" "k1 k2 k3 nx" "k0 k00 dot nx"; }
   .numpad[hidden] { display: none; }
   .answer-body, .answer-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  /* 横幅の広い画面（iPadなど）：回答欄とテンキーを横並びに。左右はトップ画面で選ぶ */
-  @media (min-width: 600px) {
-    .answer-body { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; gap: 18px; }
-    .answer-body.np-left { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); }
+  /* 回答欄とテンキーを横並びに（左右はトップ画面で選ぶ）。幅340px未満のとても狭い画面だけは、回答欄の下に出す */
+  @media (min-width: 340px) {
+    .answer-body { grid-template-columns: minmax(0, 1fr) var(--np-w); align-items: start; gap: var(--np-gap); }
+    .answer-body.np-left { grid-template-columns: var(--np-w) minmax(0, 1fr); }
     .answer-body.np-left .numpad { order: -1; }
     .answer-body.np-closed { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* スマホ（幅340〜599px）：テンキーを3列にして幅を抑え、回答欄の幅を確保する */
+  @media (min-width: 340px) and (max-width: 599px) {
+    .answer-body { --np-w: 150px; --np-gap: 10px; }
+    .numpad { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .numpad.single { grid-template-areas: "k7 k8 k9" "k4 k5 k6" "k1 k2 k3" "k0 k00 dot" "bs bs clr"; }
+    .numpad.multi  { grid-template-areas: "k7 k8 k9" "k4 k5 k6" "k1 k2 k3" "k0 k00 dot" "bs clr nx"; }
+    .numpad .nk { min-height: 46px; font-size: 1.15rem; }
+    .numpad .nk.fn { font-size: 0.78rem; }
+    .answer-body .num-input { min-height: 50px; padding: 0 8px; font-size: 1.12rem; }
+    .answer-body .num-row { gap: 4px; }
+    .answer-body .unit { min-width: 0; font-size: 0.85rem; }
+    .answer-body .chips { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .answer-body .chips .opt { min-height: 44px; }
+    .answer-body .num-input.long { font-size: 0.92rem; }
+  }
+  /* 入力欄が縦に長いときも、テンキーが画面から外れないよう追いかけて表示する */
+  /*   （上部の見出し帯も画面に貼り付いているので、その高さ --top-h の分だけ下げる。--top-h は出題画面を表示するたびに測る） */
+  @media (min-width: 340px) { .answer-body .numpad { position: sticky; top: calc(var(--top-h, 0px) + 8px); } }
+  /* iPadなど（幅600px以上）：テンキーは4列 */
+  @media (min-width: 600px) {
+    .answer-body { --np-w: minmax(240px, 300px); --np-gap: 18px; }
   }
   .nk {
     min-height: 50px; padding: 0; border: 1px solid var(--rule); border-radius: 4px;
@@ -536,8 +567,8 @@ const CONFIG = {
   //   "always" … PCでも出す
   //   "off"    … 出さない（端末のキーボードで入力）
   numpad: "touch",
-  // 横幅の広い画面（iPadなど・幅600px以上）で、テンキーを回答欄の右・左どちらに置くかの初期値（"right" か "left"）。
-  // 受験者がトップ画面で選ぶと、その端末ではそちらが優先されます。狭い画面（スマホ縦向き）では常に回答欄の下に出します
+  // テンキーを回答欄の右・左どちらに置くかの初期値（"right" か "left"）。
+  // 受験者がトップ画面で選ぶと、その端末ではそちらが優先されます。幅340px未満のとても狭い画面だけは、回答欄の下に出します
   numpadSide: "right",
 
   // 電卓（問題文と選択肢の間。GT・メモリー・√・00・小数点・一桁取り消しつき）
@@ -605,9 +636,11 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "5.3",
-  updated: "2026-10-09",
+  version: "5.5",
+  updated: "2026-10-14",
   changelog: [
+    ["2026-10-14", "iPadで電卓・テンキーのキーを押しやすく（触れた瞬間に入力・キーを大きく）"],
+    ["2026-10-11", "スマホでも回答欄とテンキーを横に並べるように"],
     ["2026-10-09", "記述式の答えを、画面内のテンキーで入力できるように（スマホ・タブレット。iPadなどでは回答欄の横に出し、左右はトップ画面で選べます）"],
     ["2026-10-09", "下書き欄を2本指で動かせるように（「元の位置へ」で戻せます）"],
     ["2026-10-07", "問題文の誤字と、他の問題を前提にした書き方を修正"],
@@ -4273,7 +4306,7 @@ function createCalculator(options) {
     } }, label));
     return h("div", { class: "seg-wrap" },
       h("div", { class: "seg", role: "group", "aria-label": "テンキーの位置" }, h("span", { class: "seg-label" }, "テンキー"), btns),
-      h("p", { class: "seg-note" }, "横幅の広い画面（iPadなど）で、回答欄の横に出す位置"));
+      h("p", { class: "seg-note" }, "回答欄の横に出す位置"));
   }
 
   // 論点別テストの一覧（CONFIG.topics の group ごとに並べる。問題が1問もない論点は出さない）
@@ -4371,14 +4404,24 @@ function createCalculator(options) {
   //   ・前のキーから指を離す前に次のキーを押しても、どちらも確実に入力される（iPhoneでは click が取りこぼされることがある）
   //   ・押した瞬間に見た目を変え、指を離した時点で入力する（指を滑らせてスクロールしたときは入力しない）
   //   ・キーボードで Enter／スペースを押したとき（click だけが届く）も入力できるよう、click も受ける
+  //   ・iPadなど幅600px以上の画面（指・ペン）では、触れた瞬間に入力する。キーの上ではスクロールしない（CSSの touch-action: none）ので、
+  //     指がわずかに動いてスクロールと判定され入力が消える、ということが起きない。スマホでは電卓の上でもスクロールできるよう、従来どおり離した時点で入力する
+  const pressOnDown = (e) => e.pointerType !== "mouse" && !!window.matchMedia && window.matchMedia("(min-width: 600px)").matches;
   function bindPress(btn, fn) {
-    const downs = new Map(); // pointerId → 押した位置
+    const downs = new Map(); // pointerId → 押した位置（触れた瞬間に入力した場合は null）
     let lastPointerPress = 0;
     const release = (id) => { downs.delete(id); if (downs.size === 0) btn.classList.remove("pressing"); };
     btn.addEventListener("pointerdown", (e) => {
       if (e.button > 0) return;
-      downs.set(e.pointerId, [e.clientX, e.clientY]);
       btn.classList.add("pressing");
+      if (pressOnDown(e)) {
+        if (e.cancelable) e.preventDefault();
+        downs.set(e.pointerId, null);
+        lastPointerPress = Date.now();
+        fn();
+        return;
+      }
+      downs.set(e.pointerId, [e.clientX, e.clientY]);
     });
     btn.addEventListener("pointerup", (e) => {
       const at = downs.get(e.pointerId);
@@ -4448,17 +4491,17 @@ function createCalculator(options) {
       sel[active] = [inp.selectionStart, inp.selectionEnd];
     }
     const multi = fields.length > 1;
-    const defs = [["7"], ["8"], ["9"], ["bs", "⌫", multi ? "fn" : "fn tall", "1文字消す"],
-      ["4"], ["5"], ["6"], ...(multi ? [["clr", "クリア", "fn", "この欄を全部消す"]] : []),
-      ["1"], ["2"], ["3"], multi ? ["next", "次の欄", "fn tall", "次の入力欄へ"] : ["clr", "クリア", "fn tall", "この欄を全部消す"],
-      ["0"], ["00"], [".", "．", "", "小数点"]];
-    const keys = defs.map(([key, label, kind, aria]) => {
-      const btn = h("button", { type: "button", class: "nk " + (kind || ""), "aria-label": aria || key, tabindex: "-1" }, label || key);
+    // キーの並びは CSS の grid-template-areas で決める（画面の幅で4列・3列を切り替えるため）。area はキーの置き場所の名前
+    const defs = [["7"], ["8"], ["9"], ["4"], ["5"], ["6"], ["1"], ["2"], ["3"], ["0"], ["00"], [".", "．", "", "小数点", "dot"],
+      ["bs", "⌫", "fn", "1文字消す", "bs"], ["clr", "クリア", "fn", "この欄を全部消す", "clr"],
+      ...(multi ? [["next", "次の欄", "fn", "次の入力欄へ", "nx"]] : [])];
+    const keys = defs.map(([key, label, kind, aria, area]) => {
+      const btn = h("button", { type: "button", class: "nk " + (kind || ""), "aria-label": aria || key, tabindex: "-1", style: "grid-area:" + (area || "k" + key) }, label || key);
       btn.addEventListener("mousedown", (e) => e.preventDefault()); // 押しても入力欄からカーソルが外れないように
       bindPress(btn, () => type(key));
       return btn;
     });
-    const pad = h("div", { class: "numpad", role: "group", "aria-label": "テンキー" }, keys);
+    const pad = h("div", { class: "numpad " + (multi ? "multi" : "single"), role: "group", "aria-label": "テンキー" }, keys);
     setActive(0);
     return pad;
   }
@@ -4799,6 +4842,7 @@ function createCalculator(options) {
             }
           }
           prevVal = inp.value;
+          inp.classList.toggle("long", inp.value.length > 9); // 桁が多いときは文字を小さくして、欄に収める
           state.responses[i].raw = inp.value;
           updateReady();
         };
@@ -4830,7 +4874,7 @@ function createCalculator(options) {
       buildTools(),
       isInput
         ? h("div", { class: "answer-input" },
-          h("p", { class: "input-hint" }, useNumpad ? "下のテンキーで答えの数値を入力してください（カンマは自動で入ります）" : "答えの数値を入力してください（カンマはあってもなくても構いません）"),
+          h("p", { class: "input-hint" }, useNumpad ? "テンキーで答えの数値を入力してください（カンマは自動で入ります）" : "答えの数値を入力してください（カンマはあってもなくても構いません）"),
           numpad
             ? h("div", { class: "answer-body np-" + numpadSide() }, h("div", { class: "answer-fields" }, fields.map((f) => f.el)), numpad)
             : fields.map((f) => f.el))
@@ -4847,6 +4891,8 @@ function createCalculator(options) {
         h("div", { class: "steps", role: "progressbar", "aria-label": "進捗", "aria-valuemin": 1, "aria-valuemax": total, "aria-valuenow": state.index + 1 }, steps)),
       h("main", { class: "main" }, root),
       h("div", { class: "actions" }, action));
+    const topBar = app.querySelector(".top");
+    if (topBar) document.documentElement.style.setProperty("--top-h", topBar.offsetHeight + "px");
     window.scrollTo(0, 0);
   }
 
