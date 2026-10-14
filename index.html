@@ -128,8 +128,8 @@
   #app {
     max-width: 640px;
     margin: 0 auto;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: calc(100vh - 6px);  /* 6px は画面最上部の色帯の分（これがないと常に6pxだけスクロールが出る） */
+    min-height: calc(100dvh - 6px);
     display: flex;
     flex-direction: column;
   }
@@ -407,6 +407,51 @@
   }
   /* 幅700px以上（iPad mini の縦向きなど）では、画面の横幅を少し広く使う */
   @media (min-width: 700px) { #app { max-width: 760px; } }
+  /* 幅1000px以上（iPadの横向き・PC）で下書きと電卓を両方開いたとき：3列（問題文と回答｜下書き｜電卓）にして、スクロールせずに収める。
+     下書き欄と電卓の高さは --tool-h（画面の高さから見出し帯・回答ボタン帯・余白を引いた値。JSの fitToolHeight で計算） */
+  @media (min-width: 1000px) {
+    #app.tools-both { max-width: 1400px; }
+    .card.tools-both {
+      display: grid; column-gap: 14px; align-items: start;
+      grid-template-columns: minmax(0, 36fr) minmax(0, 34fr) minmax(0, 30fr);
+      grid-template-areas: "q scratch calc" "tg scratch calc" "ans scratch calc" "slot scratch calc";
+      grid-template-rows: auto auto auto 1fr;
+    }
+    .card.tools-both .calc-wrap, .card.tools-both .tool-panels { display: contents; }
+    .card.tools-both .q { grid-area: q; }
+    .card.tools-both .tool-toggles { grid-area: tg; margin-bottom: 14px; }
+    .card.tools-both .answer-input { grid-area: ans; }
+    .card.tools-both .slot { grid-area: slot; }
+    .card.tools-both .scratch, .card.tools-both .calc {
+      margin-top: 0; height: var(--tool-h, 520px); display: flex; flex-direction: column; box-sizing: border-box;
+    }
+    .card.tools-both .scratch { grid-area: scratch; }
+    .card.tools-both .calc { grid-area: calc; }
+    .card.tools-both .scratch-board { flex: 1; min-height: 0; }
+    .card.tools-both .scratch-canvas { height: 100%; }
+    .card.tools-both .calc-keys { flex: 1; min-height: 0; grid-auto-rows: 1fr; }
+    .card.tools-both .calc-keys .ck, .card.tools-both .calc-keys .ck-gap { min-height: 0; }
+    /* 左の列は幅が限られるので、テンキーは回答欄の下に（左右の設定はこの表示では使わない） */
+    .card.tools-both .answer-body, .card.tools-both .answer-body.np-left { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .card.tools-both .answer-body .numpad { order: 0; position: static; }
+    /* テンキーは2段（1〜6・⌫／7〜0・00・小数点・クリア）にして、左の列を低く収める */
+    .card.tools-both .numpad { gap: 5px; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .card.tools-both .numpad.single { grid-template-areas: "k1 k2 k3 k4 k5 k6 bs" "k7 k8 k9 k0 k00 dot clr"; }
+    .card.tools-both .numpad.multi { grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-areas: "k1 k2 k3 k4 k5 k6 bs nx" "k7 k8 k9 k0 k00 dot clr nx"; }
+    .card.tools-both .numpad .nk { font-size: 1.1rem; }
+    .card.tools-both .numpad .nk.fn { font-size: 0.75rem; }
+    .card.tools-both .input-hint { display: none; }
+    .card.tools-both .q { font-size: 0.98rem; line-height: 1.65; margin-bottom: 12px; }
+    /* 入力欄が2つある問題（有利・不利の2択付きなど）も収まるよう、左の列を詰める */
+    .card.tools-both .tool-toggles { margin-bottom: 10px; }
+    .card.tools-both .tool-toggles .calc-toggle, .card.tools-both .tool-toggles .scratch-toggle { min-height: 40px; }
+    .card.tools-both .answer-fields { gap: 8px; }
+    .card.tools-both .field-label { margin-bottom: 2px; font-size: 0.85rem; }
+    .card.tools-both .num-input { min-height: 44px; font-size: 1.2rem; }
+    .card.tools-both .chips { margin-top: 5px; }
+    .card.tools-both .chips .opt { min-height: 38px; padding-top: 0; padding-bottom: 0; font-size: 0.88rem; }
+    .card.tools-both .numpad .nk { min-height: 42px; }
+  }
   .tool-toggles.two { grid-template-columns: 1fr 1fr; }
   .tool-toggles .calc-toggle, .tool-toggles .scratch-toggle { padding: 0 8px; }
   .scratch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -596,6 +641,10 @@ const CONFIG = {
     enabled: true,           // false にすると下書き欄を出さない
   },
 
+  // 計算問題（記述式）では、iPad・PCなど幅600px以上の画面で、下書き欄と電卓を開いた状態で始める（false で閉じた状態から）。
+  // スマホ（幅600px未満）では、回答欄が大きく下がってしまうため、常に閉じた状態から始めます
+  openToolsForCalc: true,
+
   // 評価メッセージ：得点（100点満点）が min 以上になる最初の行が使われます。
   // min が 0 の行は必ず1つ残してください。
   // 70点は日商簿記1級の合格基準（総合70%以上）を目安にした値です。
@@ -648,9 +697,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "5.6",
-  updated: "2026-10-14",
+  version: "5.7",
+  updated: "2026-10-15",
   changelog: [
+    ["2026-10-15", "計算問題は下書きと電卓を開いた状態で始まるように（iPad・PC）。iPadの横向き・PCでは3列に並べ、スクロールせずに解けるように"],
     ["2026-10-14", "iPadなどでは、下書きと電卓を両方開くと横に並ぶように"],
     ["2026-10-14", "iPadで電卓・テンキーのキーを押しやすく（触れた瞬間に入力・キーを大きく）"],
     ["2026-10-11", "スマホでも回答欄とテンキーを横に並べるように"],
@@ -3572,6 +3622,7 @@ function checkConfig(raw) {
         taxRate: c.calculator && typeof c.calculator.taxRate === "number" && c.calculator.taxRate >= 0 ? c.calculator.taxRate : 0.1,
       },
       scratchpad: { enabled: !(c.scratchpad && c.scratchpad.enabled === false) },
+      openToolsForCalc: c.openToolsForCalc !== false,
       categoryColors: c.categoryColors && typeof c.categoryColors === "object" ? c.categoryColors : {},
       autoComma: c.autoComma !== false,
       numpad: ["touch", "always", "off"].includes(c.numpad) ? c.numpad : "touch",
@@ -4348,6 +4399,7 @@ function createCalculator(options) {
   }
 
   function renderStart() {
+    app.classList.remove("tools-both");
     state.screen = "start";
     const counts = new Map();
     pool.forEach((q) => counts.set(q.category, (counts.get(q.category) || 0) + 1));
@@ -4794,19 +4846,36 @@ function createCalculator(options) {
 
   // 問題文の下に「下書き」「電卓」の開閉ボタンを横に並べ、開いたパネルをその下に出す。
   // 下書き欄は、問題文を見ながら書き写しやすいよう、電卓より上（問題文の直下）に置く
+  // 3列表示のとき、下書き欄と電卓の高さを「画面の高さ − 上の見出し帯 − 下の回答ボタン帯 − 余白」に合わせ、スクロールせずに収める
+  let toolsSync = null;
+  function fitToolHeight() {
+    const top = app.querySelector(".top"), actions = app.querySelector(".actions");
+    if (!top || !actions) return;
+    const hgt = Math.max(380, Math.floor(window.innerHeight - top.offsetHeight - actions.offsetHeight - 82)); // 82 = 余白・枠線と、画面最上部の色帯（6px）の合計
+    document.documentElement.style.setProperty("--tool-h", hgt + "px");
+  }
+  window.addEventListener("resize", () => { if (state.screen === "quiz") fitToolHeight(); });
+
   function buildTools() {
     const calc = cfg.calculator.enabled ? buildCalculator() : null;
     const scratch = cfg.scratchpad.enabled ? buildScratch() : null;
     if (!calc && !scratch) return null;
     // 下書き欄と電卓を両方開いたときは、iPadなど幅600px以上の画面で横に並べる（CSSの .tool-panels.both）
     const panels = h("div", { class: "tool-panels" }, scratch ? scratch.panel : null, calc ? calc.panel : null);
+    toolsSync = null;
     if (calc && scratch) {
+      // 幅1000px以上（iPadの横向き・PC）で両方開いているときは、画面全体を3列（問題文と回答｜下書き｜電卓）にする（CSSの .card.tools-both）
       const sync = () => {
         const both = !scratch.panel.hidden && !calc.panel.hidden;
+        const card = panels.closest(".card");
+        if (card) card.classList.toggle("tools-both", both);
+        app.classList.toggle("tools-both", both);
+        fitToolHeight();
         if (panels.classList.contains("both") === both) return;
         panels.classList.toggle("both", both);
         requestAnimationFrame(() => { if (activeScratch) activeScratch.fit(); }); // 下書き欄の幅が変わるので描き直す
       };
+      toolsSync = sync;
       // 開閉ボタンの処理（各パネルの hidden の切り替え）が済んだ後に並べ方を決める
       scratch.toggle.addEventListener("click", sync);
       calc.toggle.addEventListener("click", sync);
@@ -4834,6 +4903,11 @@ function createCalculator(options) {
     const q = item.q;
     const total = state.items.length;
     const compact = isCompact(item);
+    // 計算問題は、iPad・PCなどでは下書き欄と電卓を開いた状態で始める（CONFIG.openToolsForCalc）
+    if (cfg.openToolsForCalc && Array.isArray(q.input) && window.matchMedia && window.matchMedia("(min-width: 600px)").matches) {
+      state.calcOpen = true;
+      state.scratchOpen = true;
+    }
 
     const steps = state.items.map((_, i) => {
       const rec = state.records[i];
@@ -4919,7 +4993,9 @@ function createCalculator(options) {
       h("div", { class: "actions" }, action));
     const topBar = app.querySelector(".top");
     if (topBar) document.documentElement.style.setProperty("--top-h", topBar.offsetHeight + "px");
+    if (toolsSync) toolsSync(); // 画面に置いた後で、下書きと電卓の並べ方（横並び・3列）を決め直す
     window.scrollTo(0, 0);
+    requestAnimationFrame(() => { if (activeScratch) activeScratch.fit(); }); // 最初から開いている下書き欄の大きさを合わせる
   }
 
   function selectOption(pos) {
@@ -5050,6 +5126,7 @@ function createCalculator(options) {
   }
 
   function renderResult() {
+    app.classList.remove("tools-both");
     state.screen = "result";
     view = null;
     const total = state.records.length;
