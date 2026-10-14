@@ -395,6 +395,18 @@
   .calc { margin-top: 10px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); scroll-margin-top: 84px; scroll-margin-bottom: 96px; }
   .calc[hidden] { display: none; }
   .tool-toggles { display: grid; gap: 8px; }
+  /* iPadなど（幅600px以上）：下書き欄と電卓を両方開いたら横に並べる（下書き55％・電卓45％） */
+  @media (min-width: 600px) {
+    .tool-panels.both { display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 10px; align-items: start; }
+    .tool-panels.both .calc-keys { gap: 5px; }
+    .tool-panels.both .ck { font-size: 1rem; }
+    .tool-panels.both .ck.fn, .tool-panels.both .ck.clr { font-size: 0.78rem; }
+    .tool-panels.both .calc-num { font-size: 1.6rem; }
+    .tool-panels.both .scratch-canvas { height: 445px; } /* 電卓とほぼ同じ高さにそろえる */
+    .tool-panels.both .scratch-hint, .tool-panels.both .calc-hint { display: none; }
+  }
+  /* 幅700px以上（iPad mini の縦向きなど）では、画面の横幅を少し広く使う */
+  @media (min-width: 700px) { #app { max-width: 760px; } }
   .tool-toggles.two { grid-template-columns: 1fr 1fr; }
   .tool-toggles .calc-toggle, .tool-toggles .scratch-toggle { padding: 0 8px; }
   .scratch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -636,9 +648,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "5.5",
+  version: "5.6",
   updated: "2026-10-14",
   changelog: [
+    ["2026-10-14", "iPadなどでは、下書きと電卓を両方開くと横に並ぶように"],
     ["2026-10-14", "iPadで電卓・テンキーのキーを押しやすく（触れた瞬間に入力・キーを大きく）"],
     ["2026-10-11", "スマホでも回答欄とテンキーを横に並べるように"],
     ["2026-10-09", "記述式の答えを、画面内のテンキーで入力できるように（スマホ・タブレット。iPadなどでは回答欄の横に出し、左右はトップ画面で選べます）"],
@@ -4785,10 +4798,23 @@ function createCalculator(options) {
     const calc = cfg.calculator.enabled ? buildCalculator() : null;
     const scratch = cfg.scratchpad.enabled ? buildScratch() : null;
     if (!calc && !scratch) return null;
+    // 下書き欄と電卓を両方開いたときは、iPadなど幅600px以上の画面で横に並べる（CSSの .tool-panels.both）
+    const panels = h("div", { class: "tool-panels" }, scratch ? scratch.panel : null, calc ? calc.panel : null);
+    if (calc && scratch) {
+      const sync = () => {
+        const both = !scratch.panel.hidden && !calc.panel.hidden;
+        if (panels.classList.contains("both") === both) return;
+        panels.classList.toggle("both", both);
+        requestAnimationFrame(() => { if (activeScratch) activeScratch.fit(); }); // 下書き欄の幅が変わるので描き直す
+      };
+      // 開閉ボタンの処理（各パネルの hidden の切り替え）が済んだ後に並べ方を決める
+      scratch.toggle.addEventListener("click", sync);
+      calc.toggle.addEventListener("click", sync);
+      sync();
+    }
     return h("div", { class: "calc-wrap" },
       h("div", { class: "tool-toggles" + (calc && scratch ? " two" : "") }, scratch ? scratch.toggle : null, calc ? calc.toggle : null),
-      scratch ? scratch.panel : null,
-      calc ? calc.panel : null);
+      panels);
   }
 
   // 出題の途中でトップに戻る。1問でも解いていれば、途中の結果が消えることを確認する
