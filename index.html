@@ -463,6 +463,19 @@
     user-select: none;
   }
   .ck:active, .ck.pressing { transform: scale(0.94); filter: brightness(0.9); }
+  /* 電卓のモード切替（電卓／回答入力）と「回答欄へ」：GTの右の空き段に置く */
+  .ck-mode { grid-column: span 2; display: flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; background: var(--card); }
+  .mode-btn { flex: 1; min-width: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 0.82rem; font-weight: 700; white-space: nowrap; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  .mode-btn + .mode-btn { border-left: 1px solid var(--rule); }
+  .mode-btn[aria-pressed="true"] { background: var(--primary); color: var(--primary-text); }
+  .mode-btn.pressing { filter: brightness(0.9); }
+  .ck.xfer { grid-column: span 2; border-color: var(--primary); }
+  /* 回答入力モード：使えないキーを薄くし、電卓の枠を色付きにする */
+  .calc.input-mode { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .calc.input-mode .ck:not(.inp-ok):not(.xfer) { opacity: 0.3; }
+  .calc-flags .mode-flag { opacity: 1; color: var(--primary); }
+  .num-input.flash { animation: numflash 0.6s ease-out; }
+  @keyframes numflash { from { background: var(--primary-bg); } to { background: var(--card); } }
   /* iPadなど（幅600px以上）：キーを高くし、キーの上ではスクロールさせない（触れた瞬間に入力するため） */
   @media (min-width: 600px) {
     .calc-keys, .numpad, .calc-keys .ck, .numpad .nk { touch-action: none; }
@@ -652,9 +665,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "5.8",
+  version: "5.9",
   updated: "2026-10-15",
   changelog: [
+    ["2026-10-15", "電卓から回答欄へ入力できるように（「入力」への切り替えと「回答欄へ」）"],
     ["2026-10-15", "iPadの横向き・PCの3列表示をやめ、下書き・電卓の横並びに戻しました"],
     ["2026-10-15", "計算問題は下書きと電卓を開いた状態で始まるように（iPad・PC）"],
     ["2026-10-14", "iPadなどでは、下書きと電卓を両方開くと横に並ぶように"],
@@ -4468,10 +4482,13 @@ function createCalculator(options) {
   // キーを押すと入力欄の文字を書き換えて input イベントを送るので、カンマの自動挿入など入力欄の処理はキーボード入力と同じものが動く。
   const numpadWanted = () => cfg.numpad === "always" ||
     (cfg.numpad === "touch" && ((navigator.maxTouchPoints || 0) > 0 || (!!window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches)));
-  function buildNumpad(fields) {
+  // ---- 回答欄への入力（テンキーと電卓の「回答入力」「回答欄へ」で共通） ----
+  // 「どの入力欄に入れるか」とカーソル位置を覚えておき、キー1つ分ずつ入力欄の文字を書き換える
+  let answerTarget = null; // 表示中の記述式の問題の入力先（4択・〇×では null）
+  function createAnswerTarget(fields) {
     let active = 0;
     const sel = fields.map(() => null); // 入力欄から離れたときのカーソル位置
-    const setActive = (i) => {
+    let setActive = (i) => {
       active = i;
       fields.forEach((f, k) => f.inp.classList.toggle("np-target", k === i));
     };
@@ -4510,7 +4527,34 @@ function createCalculator(options) {
       inp.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: key === "bs" || key === "clr" ? "deleteContentBackward" : "insertText" }));
       sel[active] = [inp.selectionStart, inp.selectionEnd];
     }
-    const multi = fields.length > 1;
+    // 欄の中身をまるごと置き換える（電卓の「回答欄へ」）
+    function set(value) {
+      if (state.answered) return false;
+      const inp = fields[active].inp;
+      inp.value = value;
+      try { inp.setSelectionRange(value.length, value.length); } catch (e) { /* 無視 */ }
+      inp.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      sel[active] = [inp.selectionStart, inp.selectionEnd];
+      inp.classList.remove("flash"); void inp.offsetWidth; inp.classList.add("flash"); // 入ったことが分かるよう一瞬光らせる
+      return true;
+    }
+    // 入力欄の中身や選んでいる欄が変わったことを、電卓（回答入力モードの表示）に知らせる
+    const listeners = [];
+    fields.forEach((f) => f.inp.addEventListener("input", () => listeners.forEach((fn) => fn())));
+    const baseSetActive = setActive;
+    setActive = (i) => { baseSetActive(i); listeners.forEach((fn) => fn()); };
+    setActive(0);
+    return {
+      type, set, multi: fields.length > 1,
+      value: () => fields[active].inp.value,
+      label: () => fields.length > 1 ? (fields[active].label || "欄" + (active + 1)) : "",
+      onChange: (fn) => listeners.push(fn),
+    };
+  }
+
+  function buildNumpad(target) {
+    const type = target.type;
+    const multi = target.multi;
     // キーの並びは CSS の grid-template-areas で決める（画面の幅で4列・3列を切り替えるため）。area はキーの置き場所の名前
     const defs = [["7"], ["8"], ["9"], ["4"], ["5"], ["6"], ["1"], ["2"], ["3"], ["0"], ["00"], [".", "．", "", "小数点", "dot"],
       ["bs", "⌫", "fn", "1文字消す", "bs"], ["clr", "クリア", "fn", "この欄を全部消す", "clr"],
@@ -4521,9 +4565,7 @@ function createCalculator(options) {
       bindPress(btn, () => type(key));
       return btn;
     });
-    const pad = h("div", { class: "numpad " + (multi ? "multi" : "single"), role: "group", "aria-label": "テンキー" }, keys);
-    setActive(0);
-    return pad;
+    return h("div", { class: "numpad " + (multi ? "multi" : "single"), role: "group", "aria-label": "テンキー" }, keys);
   }
 
   function buildCalculator() {
@@ -4542,23 +4584,73 @@ function createCalculator(options) {
       flagGT.classList.toggle("on", v.gt);
       flagOp.textContent = v.op ? CALC_OP_MARK[v.op] : "";
     }
+    // 記述式の問題では、電卓を2通りに使える（GTの右の空き段にボタンを置く）
+    //   ・「電卓」モード … ふつうの電卓
+    //   ・「回答入力」モード … 数字・00・小数点・→（1文字消す）・C·CE／CA（欄を消す）のキーで、回答欄に入力する。計算のキーは使えない
+    //   ・「回答欄へ」… 電卓に表示中の数字を、選んでいる回答欄にそのまま入れる（転記）
+    const target = answerTarget;
+    let mode = "calc";
+    const INPUT_KEYS = { back: "bs", CCE: "clr", CA: "clr" };
     function press(key) {
+      if (mode === "input" && target) {
+        const k = /^[0-9]$/.test(key) || key === "00" || key === "." ? key : INPUT_KEYS[key];
+        if (k) target.type(k);
+        return;
+      }
       calc.press(key);
       sync();
+    }
+    function transfer() {
+      if (!target) return;
+      const v = calc.view();
+      if (v.error) return;
+      target.set(v.text.replace(/,/g, ""));
     }
 
     const keys = CALC_KEYS.map((def) => {
       if (def === null) return h("span", { class: "ck-gap", "aria-hidden": "true" });
       const [key, label, kind] = def;
+      const usable = /^[0-9]$/.test(key) || key === "00" || key === "." || key in INPUT_KEYS;
       const btn = h("button", {
-        type: "button", class: "ck " + kind, "aria-label": CALC_LABELS[key] || label, title: CALC_LABELS[key] || null,
+        type: "button", class: "ck " + kind + (usable ? " inp-ok" : ""), "aria-label": CALC_LABELS[key] || label, title: CALC_LABELS[key] || null,
       }, label);
       bindPress(btn, () => press(key));
       return btn;
     });
+    let modeBtns = null;
+    const flagMode = h("span", { class: "flag mode-flag" }, "");
+    // 回答入力モードの間は、表示部に「回答欄の中身」を出す（スマホでは回答欄が電卓の下に隠れるため）。電卓に戻すと計算中の数字が戻る
+    function showMode() {
+      if (mode !== "input") { sync(); return; }
+      const t = target.value();
+      screen.textContent = t || "0";
+      screen.classList.toggle("long", t.length > 13);
+      screen.classList.remove("err");
+      const lb = target.label();
+      flagMode.textContent = "回答入力中" + (lb ? "：" + lb : "");
+    }
+    function setMode(m) {
+      mode = m;
+      panel.classList.toggle("input-mode", m === "input");
+      modeBtns.forEach(([v, b]) => b.setAttribute("aria-pressed", String(v === m)));
+      if (m !== "input") flagMode.textContent = "";
+      showMode();
+    }
+    if (target) {
+      modeBtns = [["calc", "電卓", "電卓として使う"], ["input", "入力", "電卓のキーで回答欄に入力する"]].map(([v, label, aria]) => {
+        const b = h("button", { type: "button", class: "mode-btn", "aria-pressed": String(v === "calc"), "aria-label": aria }, label);
+        bindPress(b, () => setMode(v));
+        return [v, b];
+      });
+      const seg = h("div", { class: "ck-mode", role: "group", "aria-label": "電卓の使い方" }, modeBtns.map(([, b]) => b));
+      const xfer = h("button", { type: "button", class: "ck fn xfer", "aria-label": "表示中の数字を回答欄へ入れる" }, "回答欄へ");
+      bindPress(xfer, transfer);
+      target.onChange(() => { if (mode === "input") showMode(); });
+      keys.splice(1, 4, seg, xfer); // GTの右の空き4マスを、モード切替（2マス）と「回答欄へ」（2マス）に使う
+    }
 
     const panel = h("div", { class: "calc", tabindex: "-1", role: "group", "aria-label": "電卓", hidden: !state.calcOpen },
-      h("div", { class: "calc-display" }, h("div", { class: "calc-flags" }, flagM, flagGT, flagOp), screen),
+      h("div", { class: "calc-display" }, h("div", { class: "calc-flags" }, flagM, flagGT, flagMode, flagOp), screen),
       h("div", { class: "calc-keys" }, keys),
       h("p", { class: "calc-hint" }, "PC：数字・+ − * /・%・Enter（＝）・Backspace（一桁取消）・Delete（C・CE）が使えます。"));
 
@@ -4803,6 +4895,19 @@ function createCalculator(options) {
   // 下書き欄は、問題文を見ながら書き写しやすいよう、電卓より上（問題文の直下）に置く
   let toolsSync = null; // 表示中の問題の「下書きと電卓の並べ方」を決め直す関数
 
+  // 記述式で電卓を開いている間は、回答用のテンキーを隠す（電卓の「回答入力」「回答欄へ」で入力できるため。キーパッドを1つにする）
+  function syncNumpad() {
+    if (!view || !view.numpad) return;
+    const hide = state.answered || state.calcOpen;
+    view.numpad.hidden = hide;
+    view.numpad.parentNode.classList.toggle("np-closed", hide);
+    if (view.inputHint && !state.answered) {
+      view.inputHint.textContent = state.calcOpen
+        ? "電卓を「入力」に切り替えると、電卓のキーで答えを入力できます。「回答欄へ」で電卓の数字をそのまま入れることもできます"
+        : "テンキーで答えの数値を入力してください（カンマは自動で入ります）";
+    }
+  }
+
   function buildTools() {
     const calc = cfg.calculator.enabled ? buildCalculator() : null;
     const scratch = cfg.scratchpad.enabled ? buildScratch() : null;
@@ -4810,6 +4915,7 @@ function createCalculator(options) {
     // 下書き欄と電卓を両方開いたときは、iPadなど幅600px以上の画面で横に並べる（CSSの .tool-panels.both）
     const panels = h("div", { class: "tool-panels" }, scratch ? scratch.panel : null, calc ? calc.panel : null);
     toolsSync = null;
+    if (calc) calc.toggle.addEventListener("click", syncNumpad);
     if (calc && scratch) {
       const sync = () => {
         const both = !scratch.panel.hidden && !calc.panel.hidden;
@@ -4904,11 +5010,13 @@ function createCalculator(options) {
           p.label ? h("label", { class: "field-label", for: id }, p.label) : null,
           h("div", { class: "num-row" }, inp, p.unit ? h("span", { class: "unit" }, p.unit) : null),
           p.choice ? h("div", { class: "options ox chips", role: "radiogroup", "aria-label": (p.label || "答え") + "の判断" }, chips) : null);
-        return { el, inp, chips };
+        return { el, inp, chips, label: p.label || "" };
       });
     }
 
-    const numpad = useNumpad ? buildNumpad(fields) : null;
+    answerTarget = isInput ? createAnswerTarget(fields) : null; // 電卓（このあと作る）からも使う
+    let inputHint = null;
+    const numpad = useNumpad ? buildNumpad(answerTarget) : null;
     const slot = h("div", { class: "slot", "aria-live": "polite" });
     const action = h("button", { type: "button", class: "btn", disabled: true, onclick: onAction }, "回答");
     const root = h("section", { class: "card" },
@@ -4916,14 +5024,15 @@ function createCalculator(options) {
       buildTools(),
       isInput
         ? h("div", { class: "answer-input" },
-          h("p", { class: "input-hint" }, useNumpad ? "テンキーで答えの数値を入力してください（カンマは自動で入ります）" : "答えの数値を入力してください（カンマはあってもなくても構いません）"),
+          inputHint = h("p", { class: "input-hint" }, useNumpad ? "テンキーで答えの数値を入力してください（カンマは自動で入ります）" : "答えの数値を入力してください（カンマはあってもなくても構いません）"),
           numpad
             ? h("div", { class: "answer-body np-" + numpadSide() }, h("div", { class: "answer-fields" }, fields.map((f) => f.el)), numpad)
             : fields.map((f) => f.el))
         : h("div", { class: "options" + (compact ? " ox" : ""), role: "radiogroup", "aria-label": "選択肢" }, options),
       slot);
 
-    view = { root, options, slot, action, steps, fields, isInput, numpad };
+    view = { root, options, slot, action, steps, fields, isInput, numpad, inputHint };
+    syncNumpad();
     app.replaceChildren(
       h("header", { class: "top" },
         h("div", { class: "top-row" },
