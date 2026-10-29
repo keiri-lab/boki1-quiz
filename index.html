@@ -436,6 +436,13 @@
     .tool-panels.both .scratch-canvas { height: 445px; } /* 電卓とほぼ同じ高さにそろえる */
     .tool-panels.both .scratch-hint, .tool-panels.both .calc-hint { display: none; }
   }
+  /* 画面を横にしたとき（CONFIG.scratchpad.wideInLandscape）：出題画面を画面の横幅いっぱい（上限 landscapeMaxWidth）まで広げる。
+     問題文・下書き欄が広がり、電卓は縦向きと同じ幅（306px）のまま。トップ画面と結果画面は従来の幅 */
+  @media (min-width: 600px) and (orientation: landscape) {
+    #app.wide-scratch.on-quiz { max-width: var(--wide-max, 1400px); }
+    #app.wide-scratch.on-quiz .answer-input { max-width: 720px; } /* 回答欄（とテンキー）は縦向きと同じくらいの幅にとどめる（横に長すぎる入力欄は目で追いにくい） */
+    #app.wide-scratch .tool-panels.both { grid-template-columns: minmax(0, 1fr) 306px; }
+  }
   /* 幅700px以上（iPad mini の縦向きなど）では、画面の横幅を少し広く使う */
   @media (min-width: 700px) { #app { max-width: 760px; } }
   .tool-toggles.two { grid-template-columns: 1fr 1fr; }
@@ -538,6 +545,10 @@
   .numpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .numpad.single { grid-template-areas: "k7 k8 k9 bs" "k4 k5 k6 bs" "k1 k2 k3 clr" "k0 k00 dot clr"; }
   .numpad.multi  { grid-template-areas: "k7 k8 k9 bs" "k4 k5 k6 clr" "k1 k2 k3 nx" "k0 k00 dot nx"; }
+  .numpad.single.sg { grid-template-areas: "k7 k8 k9 bs" "k4 k5 k6 clr" "k1 k2 k3 neg" "k0 k00 dot neg"; }
+  .numpad.multi.sg  { grid-template-areas: "k7 k8 k9 bs" "k4 k5 k6 clr" "k1 k2 k3 nx" "k0 k00 dot neg"; }
+  .numpad .nk.sg { font-size: 1.2rem; font-weight: 700; }
+  .field-note { margin: 2px 0 4px; font-size: 0.74rem; color: var(--muted); }
   .numpad[hidden] { display: none; }
   .answer-body, .answer-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   /* 回答欄とテンキーを横並びに（左右はトップ画面で選ぶ）。幅340px未満のとても狭い画面だけは、回答欄の下に出す */
@@ -553,6 +564,8 @@
     .numpad { grid-template-columns: repeat(3, 1fr); gap: 5px; }
     .numpad.single { grid-template-areas: "k7 k8 k9" "k4 k5 k6" "k1 k2 k3" "k0 k00 dot" "bs bs clr"; }
     .numpad.multi  { grid-template-areas: "k7 k8 k9" "k4 k5 k6" "k1 k2 k3" "k0 k00 dot" "bs clr nx"; }
+    .numpad.single.sg { grid-template-areas: "k7 k8 k9" "k4 k5 k6" "k1 k2 k3" "k0 k00 dot" "bs neg clr"; }
+    .numpad.multi.sg  { grid-template-areas: "k7 k8 k9" "k4 k5 k6" "k1 k2 k3" "k0 k00 dot" "bs clr nx" "neg neg neg"; }
     .numpad .nk { min-height: 46px; font-size: 1.15rem; }
     .numpad .nk.fn { font-size: 0.78rem; }
     .answer-body .num-input { min-height: 50px; padding: 0 8px; font-size: 1.12rem; }
@@ -638,6 +651,8 @@ const CONFIG = {
   // 下書き欄（手書き。問題文と回答欄の間。開閉式で、問題ごとに白紙に戻る）
   scratchpad: {
     enabled: true,           // false にすると下書き欄を出さない
+    wideInLandscape: true,   // 画面を横にしたとき（幅600px以上）、出題画面（問題文・下書き欄など）を画面の横幅いっぱいまで広げる（電卓の大きさは変えない）。false で従来どおり
+    landscapeMaxWidth: 1400, // 横にしたときの出題画面の最大の横幅（px）。大きなモニターで広がりすぎないように
   },
 
   // 計算問題（記述式）では、iPad・PCなど幅600px以上の画面で、下書き欄と電卓を開いた状態で始める（false で閉じた状態から）。
@@ -700,9 +715,12 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "6.8",
-  updated: "2026-10-25",
+  version: "7.1",
+  updated: "2026-10-30",
   changelog: [
+    ["2026-10-30", "画面を横にしたとき、問題文と下書き欄を横幅いっぱいまで広げるように（電卓の大きさはそのまま）"],
+    ["2026-10-29", "正味現在価値・残余利益・EVA・その他の包括利益・連結CFの一部など12欄を符号付きの答えに（マイナスは「△」キーで入力）。正味現在価値は金額と採否で答える形に"],
+    ["2026-10-29", "正味現在価値・差異などの、向き（プラス・マイナス、有利・不利など）を選ぶ問題で、金額にマイナスを付けて入力しても正解に（大きさが合っていれば）"],
     ["2026-10-25", "途中の小テストを保存（再読み込みしても続きから）。トップに「進み具合」のバー（全体・計算・理論・論点別）。易しい理論問題22問を削除し全245問"],
     ["2026-10-25", "連結税効果・持分法・包括利益・連結退職給付・連結CF・企業結合・事業分離の難問を25問（追加21問、差替え4問）。全267問"],
     ["2026-10-21", "まだ1〜2回の計算で解けた計算問題51問も書き直し、計算問題はすべて2段階以上に（「難」の印は110問）"],
@@ -2400,9 +2418,9 @@ IRR＝{lo}％＋({flo}−{ratio})÷({flo}−{fhi})×2％＝{lo}％＋{x:f2}％�
 ・事業部長が管理できる投資額{Ic}、本社が決めた投資額{In}
 ・資本コスト率{c}％
 事業部長の業績評価に用いる残余利益（管理可能残余利益）と、事業部そのものの業績評価に用いる残余利益（本社費配賦前）を求めなさい。`,
-    options: ["事業部長{abs(ri1)}千円の{?ri1 > 0|プラス|マイナス}、事業部{abs(ri2)}千円の{?ri2 > 0|プラス|マイナス}", "事業部長{abs(ri2)}千円の{?ri2 > 0|プラス|マイナス}、事業部{abs(ri1)}千円の{?ri1 > 0|プラス|マイナス}", "事業部長{abs(ri1)}千円の{?ri1 > 0|プラス|マイナス}、事業部{abs(wri)}千円の{?wri > 0|プラス|マイナス}", "事業部長{abs(xri)}千円の{?xri > 0|プラス|マイナス}、事業部{abs(ri2)}千円の{?ri2 > 0|プラス|マイナス}"],
+    options: ["事業部長{ri1:▲}千円、事業部{ri2:▲}千円", "事業部長{ri2:▲}千円、事業部{ri1:▲}千円", "事業部長{ri1:▲}千円、事業部{wri:▲}千円", "事業部長{xri:▲}千円、事業部{ri2:▲}千円"],
     answer: 1,
-    input: [{ label: "管理可能残余利益", value: "{abs(ri1)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(ri1 > 0, 1, 2)}" }, { label: "事業部の残余利益", value: "{abs(ri2)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(ri2 > 0, 1, 2)}" }],
+    input: [{ label: "管理可能残余利益", value: "{ri1}", unit: "千円", signed: true }, { label: "事業部の残余利益", value: "{ri2}", unit: "千円", signed: true }],
     explanation: `【考え方】事業部長の評価には、事業部長が管理できる利益と投資額だけを使います（管理可能性の原則）。事業部そのものの評価には、事業部に個別に発生する費用と投資をすべて含めます。本社費の配賦額は、どちらの評価にも含めません。
 ・限界利益＝{S}×(1－{vr}％)＝{cm}千円
 ・管理可能利益＝{cm}－{Fc}＝{cp}千円 → 管理可能残余利益＝{cp}－{Ic}×{c}％＝{ri1:▲}千円
@@ -2774,9 +2792,9 @@ IRR＝{lo}％＋({flo}−{ratio})÷({flo}−{fhi})×2％＝{lo}％＋{x:f2}％�
 ・毎年末の税引後キャッシュ・フロー{CF}円（3年間）
 ・3年後の期末に、設備を{R}円（税引後）で売却する
 資本コストは8％で、現価係数は1年0.9259、2年0.8573、3年0.7938とする。正味現在価値（円未満四捨五入）を求め、採否を判断しなさい。`,
-    options: ["{abs(npv)}円の{?npv > 0|プラス（採用する）|マイナス（採用しない）}", "{abs(w1)}円の{?w1 > 0|プラス（採用する）|マイナス（採用しない）}", "{abs(w2)}円の{?w2 > 0|プラス（採用する）|マイナス（採用しない）}", "{abs(w3)}円の{?w3 > 0|プラス（採用する）|マイナス（採用しない）}"],
+    options: ["{npv:▲}円（{?npv > 0|採用する|採用しない}）", "{w1:▲}円（{?w1 > 0|採用する|採用しない}）", "{w2:▲}円（{?w2 > 0|採用する|採用しない}）", "{w3:▲}円（{?w3 > 0|採用する|採用しない}）"],
     answer: 1,
-    input: [{ label: "正味現在価値", value: "{abs(npv)}", unit: "円", choice: ["プラス（採用する）","マイナス（採用しない）"], choiceAnswer: "{if(npv > 0, 1, 2)}" }],
+    input: [{ label: "正味現在価値", value: "{npv}", unit: "円", signed: true, choice: ["採用する","採用しない"], choiceAnswer: "{if(npv > 0, 1, 2)}" }],
     explanation: `【考え方】運転資本（在庫・売掛金など）は、投資の開始時に資金が出ていき、終了時に戻ってきます。時期が違うので、現在価値では「出ていく額＞戻る額」となり、NPVを押し下げます。
 ・年々のCFの現在価値＝{CF}×(0.9259＋0.8573＋0.7938＝2.5770)＝{CF * 2.577}円
 ・3年後の回収（運転資本＋売却）＝({W}＋{R})×0.7938＝{(W + R) * 0.7938:f1}円
@@ -4382,14 +4400,14 @@ X組への組間接費の配賦額と、X組の完成品原価を求めなさい
       when: "abs(npv) >= 50 && abs(npv) * 10 <= I && w4 > 0 && w2 != npv",
     },
     question: `初期投資額{I}千円の設備投資案がある。毎年の税引後キャッシュ・フローは{CF}千円（4年間）で、4年後に残存価額{SV}千円を回収できる（税金は考えない）。資本コスト率は10％、年金現価係数（4年、10％）は3.1699、現価係数（4年、10％）は0.6830である。正味現在価値（千円未満は小数第1位まで）を求め、採否を判断しなさい。`,
-    options: ["{?npv > 0|＋|－}{abs(npv):f1}千円（{?npv > 0|採用すべき|採用すべきでない}）", "{?w2 > 0|＋|－}{abs(w2):f1}千円（{?w2 > 0|採用すべき|採用すべきでない}）", "{?w3 > 0|＋|－}{abs(w3):f1}千円（{?w3 > 0|採用すべき|採用すべきでない}）", "＋{w4:f1}千円（採用すべき）"],
+    options: ["{?npv > 0||▲}{abs(npv):f1}千円（{?npv > 0|採用する|採用しない}）", "{?w2 > 0||▲}{abs(w2):f1}千円（{?w2 > 0|採用する|採用しない}）", "{?w3 > 0||▲}{abs(w3):f1}千円（{?w3 > 0|採用する|採用しない}）", "{w4:f1}千円（採用する）"],
     answer: 1,
-    input: [{ label: "正味現在価値の金額", value: "{abs(npv)}", unit: "千円", choice: ["採用すべき","採用すべきでない"], choiceAnswer: "{if(npv > 0, 1, 2)}" }],
+    input: [{ label: "正味現在価値", value: "{npv}", unit: "千円", signed: true, choice: ["採用する","採用しない"], choiceAnswer: "{if(npv > 0, 1, 2)}" }],
     explanation: `【考え方】正味現在価値は、毎年のキャッシュ・フローと、最終年度に回収する残存価額の両方を現在価値に割り引き、初期投資額を差し引いて求めます。
 ・毎年のCFの現在価値＝{CF}千円×3.1699＝{pcf:f1}千円
 ・残存価額の現在価値＝{SV}千円×0.6830＝{psv:f1}千円
-・正味現在価値＝{pcf:f1}＋{psv:f1}－{I}＝{?npv > 0|＋|－}{abs(npv):f1}千円 → {?npv > 0|プラスなので採用すべき|マイナスなので採用すべきでない}
-【つまずき】{?w2 > 0|＋|－}{abs(w2):f1}千円は、残存価額の回収を忘れた誤りです。最終年度の残存価額（や運転資本の回収）は、見落としやすいキャッシュ・インです。`,
+・正味現在価値＝{pcf:f1}＋{psv:f1}－{I}＝{?npv > 0||▲}{abs(npv):f1}千円 → {?npv > 0|プラスなので採用する|マイナスなので採用しない}
+【つまずき】{?w2 > 0||▲}{abs(w2):f1}千円は、残存価額の回収を忘れた誤りです。最終年度の残存価額（や運転資本の回収）は、見落としやすいキャッシュ・インです。`,
   },
   {
     id: 156,
@@ -4438,9 +4456,9 @@ X組への組間接費の配賦額と、X組の完成品原価を求めなさい
       when: "isInt(nopat) && isInt((TA - NL) * w / 100) && isInt(TA * w / 100) && eva != 0 && weva != 0 && xeva != 0 && NL * 2 < TA && abs(eva) != abs(xeva)",
     },
     question: `ある事業部の当期の営業利益は{OI}千円、法人税等の実効税率は{t}％である。事業部の総資産は{TA}千円で、このうち買掛金・未払費用などの無利子負債で賄われている部分が{NL}千円ある。加重平均資本コスト（WACC）は{w}％である。経済的付加価値（EVA）の計算に用いる投下資本（総資産－無利子負債）と、EVAを求めなさい。`,
-    options: ["投下資本{ic}千円、EVA{abs(eva)}千円の{?eva > 0|プラス|マイナス}", "投下資本{TA}千円、EVA{abs(xeva)}千円の{?xeva > 0|プラス|マイナス}", "投下資本{ic}千円、EVA{abs(weva)}千円の{?weva > 0|プラス|マイナス}", "投下資本{ic}千円、EVA{abs(eva)}千円の{?eva > 0|マイナス|プラス}"],
+    options: ["投下資本{ic}千円、EVA{eva:▲}千円", "投下資本{TA}千円、EVA{xeva:▲}千円", "投下資本{ic}千円、EVA{weva:▲}千円", "投下資本{ic}千円、EVA{-eva:▲}千円"],
     answer: 1,
-    input: [{ label: "投下資本", value: "{ic}", unit: "千円" }, { label: "EVA", value: "{abs(eva)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(eva > 0, 1, 2)}" }],
+    input: [{ label: "投下資本", value: "{ic}", unit: "千円" }, { label: "EVA", value: "{eva}", unit: "千円", signed: true }],
     explanation: `【考え方】EVAは、税引後営業利益（NOPAT）から、投下資本にかかる資本コスト（投下資本×WACC）を差し引いたものです。投下資本は、利息のかからない負債（買掛金など）で賄われた部分を除いた、資本コストのかかる資金の額です。
 ・NOPAT＝{OI}×(1－{t}％)＝{nopat}千円
 ・投下資本＝{TA}－{NL}＝{ic}千円 → 資本コスト＝{ic}×{w}％＝{ic * w / 100}千円
@@ -5193,9 +5211,9 @@ X組への組間接費の配賦額と、X組の完成品原価を求めなさい
 ・売上債権の{?dR > 0|増加|減少}額{abs(dR)}　・棚卸資産の{?dS > 0|増加|減少}額{abs(dS)}　・仕入債務の{?dP > 0|増加|減少}額{abs(dP)}
 ・利息及び配当金の受取額{Ir}（持分法適用会社からの配当金を含む）　・法人税等の支払額{T}
 ・短期借入金の純{?Bw > 0|増加|減少}額{abs(Bw)}　・親会社による配当金の支払額{Dp}　・非支配株主への配当金の支払額{Dn}`,
-    options: ["営業活動{op}千円、財務活動{abs(fin)}千円の{?fin > 0|収入超過|支出超過}", "営業活動{wop}千円、財務活動{abs(fin)}千円の{?fin > 0|収入超過|支出超過}", "営業活動{xop}千円、財務活動{abs(wfin)}千円の{?wfin > 0|収入超過|支出超過}", "営業活動{op}千円、財務活動{abs(wfin)}千円の{?wfin > 0|収入超過|支出超過}"],
+    options: ["営業活動{op}千円、財務活動{fin:▲}千円", "営業活動{wop}千円、財務活動{fin:▲}千円", "営業活動{xop}千円、財務活動{wfin:▲}千円", "営業活動{op}千円、財務活動{wfin:▲}千円"],
     answer: 1,
-    input: [{ label: "営業活動によるキャッシュ・フロー", value: "{op}", unit: "千円" }, { label: "財務活動によるキャッシュ・フロー", value: "{abs(fin)}", unit: "千円", choice: ["収入超過","支出超過"], choiceAnswer: "{if(fin > 0, 1, 2)}" }],
+    input: [{ label: "営業活動によるキャッシュ・フロー", value: "{op}", unit: "千円" }, { label: "財務活動によるキャッシュ・フロー", value: "{fin}", unit: "千円", signed: true }],
     explanation: `【考え方】連結CF計算書（間接法）では、個別と同じ調整に加えて、のれん償却額（現金の出ない費用）を足し戻し、持分法による投資利益（現金の入らない利益）を差し引きます。持分法適用会社からの配当金は、実際に受け取った現金として「利息及び配当金の受取額」に含まれます。非支配株主への配当金の支払いは、財務活動に記載します。
 ・小計＝{PB}＋{D}＋{G}－{E}－{I}{?dR > 0|－|＋}{abs(dR)}{?dS > 0|－|＋}{abs(dS)}{?dP > 0|＋|－}{abs(dP)}＝{sub}千円
 ・営業活動＝{sub}＋{Ir}－{T}＝{op}千円
@@ -6598,9 +6616,9 @@ X組への組間接費の配賦額と、X組の完成品原価を求めなさい
     },
     question: `設備投資案（取得原価{I}千円、耐用年数3年、残存価額ゼロ、定額法。税務上も同じ）を検討している。この設備により、毎年の税引前の現金収入と現金支出の差額が{C}千円増加する。3年後の売却価額は{S}千円と見込まれる（売却時の帳簿価額はゼロ）。法人税等の実効税率は{t}％、資本コストは年5％で、現価係数は1年0.9524、2年0.9070、3年0.8638とする。キャッシュ・フローと税金の支払いはすべて各年度末に生じるものとする。
 毎年の税引後キャッシュ・フロー（売却分を除く）と、正味現在価値（千円未満四捨五入）を求め、採否を判断しなさい。`,
-    options: ["税引後CF{ncf}千円、正味現在価値{abs(npv)}千円の{?npv > 0|プラス（採用する）|マイナス（採用しない）}", "税引後CF{at}千円、正味現在価値{abs(w1)}千円の{?w1 > 0|プラス（採用する）|マイナス（採用しない）}", "税引後CF{ncf}千円、正味現在価値{abs(w2)}千円の{?w2 > 0|プラス（採用する）|マイナス（採用しない）}", "税引後CF{ncf}千円、正味現在価値{abs(w3)}千円の{?w3 > 0|プラス（採用する）|マイナス（採用しない）}"],
+    options: ["税引後CF{ncf}千円、正味現在価値{npv:▲}千円（{?npv > 0|採用する|採用しない}）", "税引後CF{at}千円、正味現在価値{w1:▲}千円（{?w1 > 0|採用する|採用しない}）", "税引後CF{ncf}千円、正味現在価値{w2:▲}千円（{?w2 > 0|採用する|採用しない}）", "税引後CF{ncf}千円、正味現在価値{w3:▲}千円（{?w3 > 0|採用する|採用しない}）"],
     answer: 1,
-    input: [{ label: "毎年の税引後CF", value: "{ncf}", unit: "千円" }, { label: "正味現在価値", value: "{abs(npv)}", unit: "千円", choice: ["プラス（採用する）","マイナス（採用しない）"], choiceAnswer: "{if(npv > 0, 1, 2)}" }],
+    input: [{ label: "毎年の税引後CF", value: "{ncf}", unit: "千円" }, { label: "正味現在価値", value: "{npv}", unit: "千円", signed: true, choice: ["採用する","採用しない"], choiceAnswer: "{if(npv > 0, 1, 2)}" }],
     explanation: `【考え方】税引後のキャッシュ・フローは「税引後の現金収支＋減価償却費による節税額（タックス・シールド）」です。売却価額は、帳簿価額ゼロとの差額がすべて売却益になるので、税金を差し引いた額が手元に残ります。
 ・税引後の現金収支＝{C}×(1－{t}％)＝{at}千円、タックス・シールド＝{dep}×{t}％＝{dep * t / 100}千円 → 税引後CF＝{ncf}千円
 ・年金現価係数（3年）＝0.9524＋0.9070＋0.8638＝2.7232 → {ncf}×2.7232＝{ncf * 2.7232:f2}千円
@@ -6903,9 +6921,9 @@ ABCによる製品Bへの製造間接費の配賦額と、従来の方法と比�
       when: "dv1 != 0 && dv0 + dv1 > 0 && isInt(occ) && isInt(rec) && isInt(net) && abs(dv1) != dv0 + dv1 && abs(occ) != abs(net)",
     },
     question: `前期にその他有価証券（取得原価{C}千円）を取得し、前期末の時価は{V0}千円であった（全部純資産直入法、法定実効税率{t}％）。当期中に全部を{Sp}千円で売却した。当期の包括利益計算書における、その他有価証券評価差額金の当期発生額と組替調整額（いずれも税効果控除後）を求めなさい。`,
-    options: ["当期発生額{abs(occ)}千円の{?occ > 0|プラス|マイナス}、組替調整額{abs(rec)}千円のマイナス", "当期発生額{abs(dv1)}千円の{?dv1 > 0|プラス|マイナス}、組替調整額{dv0 + dv1}千円のマイナス", "当期発生額{abs(net)}千円のマイナス、組替調整額0千円", "当期発生額{abs(occ)}千円の{?occ > 0|マイナス|プラス}、組替調整額{abs(rec)}千円のプラス"],
+    options: ["当期発生額{occ:▲}千円、組替調整額{rec:▲}千円", "当期発生額{dv1:▲}千円、組替調整額{-(dv0 + dv1):▲}千円", "当期発生額▲{abs(net)}千円、組替調整額0千円", "当期発生額{-occ:▲}千円、組替調整額{-rec:▲}千円"],
     answer: 1,
-    input: [{ label: "当期発生額", value: "{abs(occ)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(occ > 0, 1, 2)}" }, { label: "組替調整額", value: "{abs(rec)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "2" }],
+    input: [{ label: "当期発生額", value: "{occ}", unit: "千円", signed: true }, { label: "組替調整額", value: "{rec}", unit: "千円", signed: true }],
     explanation: `【考え方】その他有価証券を売却すると、売却益は当期純利益に含まれます。過去にその他の包括利益として計上した分と二重に包括利益に含めないよう、売却益に相当する額を、その他の包括利益から差し引きます（組替調整額）。
 ・当期発生額：期首から売却時までの時価の変動＝({Sp}－{V0})×(1－{t}％)＝{occ:±}千円
 ・組替調整額：当期純利益に含まれた売却益({Sp}－{C}＝{gain}千円)×(1－{t}％)＝{rec:▲}千円
@@ -6962,9 +6980,9 @@ ABCによる製品Bへの製造間接費の配賦額と、従来の方法と比�
       when: "isInt(Uo / N) && D != 0 && occ != 0 && acc != 0 && isInt(occ) && isInt(acc) && isInt(wocc) && isInt(xacc) && wocc != occ && xacc != acc && Uo - Uo / N + D != 0 && pocc != occ",
     },
     question: `連結財務諸表を作成する。数理計算上の差異は、発生の翌期から{N}年で定額法により費用処理している。前期末に発生した不利差異{Uo}千円は、当期から費用処理を始めた。当期末に{?D > 0|不利差異|有利差異}{abs(D)}千円が新たに発生した（翌期から費用処理）。法定実効税率は{t}％である。連結包括利益計算書の「退職給付に係る調整額」（その他の包括利益、税効果控除後）と、期末の「退職給付に係る調整累計額」を求めなさい。`,
-    options: ["調整額{abs(occ)}千円の{?occ > 0|プラス|マイナス}、調整累計額{abs(acc)}千円の{?acc > 0|プラス|マイナス}", "調整額{abs(wocc)}千円の{?wocc > 0|プラス|マイナス}、調整累計額{abs(xacc)}千円の{?xacc > 0|プラス|マイナス}", "調整額{abs(pocc)}千円の{?pocc > 0|プラス|マイナス}、調整累計額{abs(acc)}千円の{?acc > 0|プラス|マイナス}", "調整額{abs(occ)}千円の{?occ > 0|マイナス|プラス}、調整累計額{abs(acc)}千円の{?acc > 0|マイナス|プラス}"],
+    options: ["調整額{occ:▲}千円、調整累計額{acc:▲}千円", "調整額{wocc:▲}千円、調整累計額{xacc:▲}千円", "調整額{pocc:▲}千円、調整累計額{acc:▲}千円", "調整額{-occ:▲}千円、調整累計額{-acc:▲}千円"],
     answer: 1,
-    input: [{ label: "退職給付に係る調整額", value: "{abs(occ)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(occ > 0, 1, 2)}" }, { label: "退職給付に係る調整累計額", value: "{abs(acc)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(acc > 0, 1, 2)}" }],
+    input: [{ label: "退職給付に係る調整額", value: "{occ}", unit: "千円", signed: true }, { label: "退職給付に係る調整累計額", value: "{acc}", unit: "千円", signed: true }],
     explanation: `【考え方】連結では、未認識の差異をその他の包括利益で計上します。当期の「退職給付に係る調整額」は、①当期に発生した差異（不利ならマイナス）と、②過去に計上した差異のうち当期に費用処理した分の振戻し（組替調整額。不利差異の費用処理ならプラス）の合計です。
 ・当期発生額＝{?D > 0|不利差異なので▲|有利差異なので＋}{abs(D)}千円
 ・組替調整額＝前期末の不利差異{Uo}÷{N}年＝＋{a}千円
@@ -7076,9 +7094,9 @@ ABCによる製品Bへの製造間接費の配賦額と、従来の方法と比�
 ・非支配株主への配当金の支払{Dn}、子会社S3社の増資を非支配株主が引き受けた払込み{X}
 ・子会社S4社株式のすべてを売却して連結の範囲から除外（受取{Z}。S4社が保有していた現金及び現金同等物は{K2}）
 連結キャッシュ・フロー計算書の財務活動によるキャッシュ・フローと、投資活動によるキャッシュ・フロー（上記の取引分）を求めなさい。`,
-    options: ["財務活動{abs(fin)}千円の{?fin > 0|収入超過|支出超過}、投資活動{inv}千円の収入超過", "財務活動{abs(wfin)}千円の{?wfin > 0|収入超過|支出超過}、投資活動0千円", "財務活動{abs(-Dn + X)}千円の{?X - Dn > 0|収入超過|支出超過}、投資活動{abs(winv)}千円の{?winv > 0|収入超過|支出超過}", "財務活動{abs(fin)}千円の{?fin > 0|収入超過|支出超過}、投資活動{xinv}千円の収入超過"],
+    options: ["財務活動{fin:▲}千円、投資活動{inv}千円", "財務活動{wfin:▲}千円、投資活動0千円", "財務活動{X - Dn:▲}千円、投資活動{winv:▲}千円", "財務活動{fin:▲}千円、投資活動{xinv}千円"],
     answer: 1,
-    input: [{ label: "財務活動によるキャッシュ・フロー", value: "{abs(fin)}", unit: "千円", choice: ["収入超過","支出超過"], choiceAnswer: "{if(fin > 0, 1, 2)}" }, { label: "投資活動によるキャッシュ・フロー", value: "{inv}", unit: "千円" }],
+    input: [{ label: "財務活動によるキャッシュ・フロー", value: "{fin}", unit: "千円", signed: true }, { label: "投資活動によるキャッシュ・フロー", value: "{inv}", unit: "千円" }],
     explanation: `【考え方】支配が続く子会社株式の追加取得・一部売却は、非支配株主との資本取引なので財務活動に記載します。一方、支配を失う売却（連結の範囲の変更）は投資活動に記載し、その子会社の現金は連結から外れるので差し引きます。
 ・財務活動＝追加取得▲{A1}＋一部売却{S1}－非支配株主への配当{Dn}＋非支配株主からの払込み{X}＝{fin:▲}千円
 ・投資活動＝S4社株式の売却{Z}－S4社の現金{K2}＝{inv}千円（連結の範囲の変更を伴う子会社株式の売却による収入）
@@ -7106,9 +7124,9 @@ ABCによる製品Bへの製造間接費の配賦額と、従来の方法と比�
       when: "Bd + Nd > 0 && dA != 0 && dC != 0 && (dA > 0) == (dC > 0) && abs(dA) < abs(dC) && diff != 0 && wdiff != diff && Nd != 0",
     },
     question: `在外子会社S社の現金及び現金同等物は、期首{Bd}千ドル（前期末の為替相場@{CR0}円で換算済み）である。当期のS社のキャッシュ・フロー（純増減）は{Nd:±}千ドルで、期中平均相場@{AR}円で換算する。決算日の為替相場は@{CR1}円である。連結キャッシュ・フロー計算書の「現金及び現金同等物に係る換算差額」と、期末の現金及び現金同等物（円）を求めなさい。`,
-    options: ["換算差額{abs(diff)}千円の{?diff > 0|プラス|マイナス}、期末残高{end}千円", "換算差額{abs(wdiff)}千円の{?wdiff > 0|プラス|マイナス}、期末残高{end}千円", "換算差額0千円、期末残高{xend}千円", "換算差額{abs(diff)}千円の{?diff > 0|マイナス|プラス}、期末残高{end}千円"],
+    options: ["換算差額{diff:▲}千円、期末残高{end}千円", "換算差額{wdiff:▲}千円、期末残高{end}千円", "換算差額0千円、期末残高{xend}千円", "換算差額{-diff:▲}千円、期末残高{end}千円"],
     answer: 1,
-    input: [{ label: "現金及び現金同等物に係る換算差額", value: "{abs(diff)}", unit: "千円", choice: ["プラス","マイナス"], choiceAnswer: "{if(diff > 0, 1, 2)}" }, { label: "期末の現金及び現金同等物", value: "{end}", unit: "千円" }],
+    input: [{ label: "現金及び現金同等物に係る換算差額", value: "{diff}", unit: "千円", signed: true }, { label: "期末の現金及び現金同等物", value: "{end}", unit: "千円" }],
     explanation: `【考え方】在外子会社のキャッシュ・フローは期中平均相場で、期末の現金残高は決算日の為替相場で換算します。期首残高＋換算したキャッシュ・フローと、期末残高との差を「現金及び現金同等物に係る換算差額」として、独立の区分に記載します。
 ・期首残高＝{Bd}千ドル×@{CR0}＝{beg}千円
 ・当期のキャッシュ・フロー＝{Nd:±}千ドル×@{AR}＝{flow:±}千円
@@ -7358,7 +7376,11 @@ function checkConfig(raw) {
         gtIncludesAddSub: !(c.calculator && c.calculator.gtIncludesAddSub === false),
         taxRate: c.calculator && typeof c.calculator.taxRate === "number" && c.calculator.taxRate >= 0 ? c.calculator.taxRate : 0.1,
       },
-      scratchpad: { enabled: !(c.scratchpad && c.scratchpad.enabled === false) },
+      scratchpad: {
+        enabled: !(c.scratchpad && c.scratchpad.enabled === false),
+        wideInLandscape: !(c.scratchpad && c.scratchpad.wideInLandscape === false),
+        landscapeMaxWidth: c.scratchpad && Number.isFinite(c.scratchpad.landscapeMaxWidth) && c.scratchpad.landscapeMaxWidth >= 600 ? c.scratchpad.landscapeMaxWidth : 1400,
+      },
       openToolsForCalc: c.openToolsForCalc !== false,
       theoryOxRate: typeof c.theoryOxRate === "number" && c.theoryOxRate >= 0 && c.theoryOxRate <= 1 ? c.theoryOxRate : 0.4,
       categoryColors: c.categoryColors && typeof c.categoryColors === "object" ? c.categoryColors : {},
@@ -7501,6 +7523,7 @@ function instantiate(q, rng) {
       r.input = q.input.map((p) => {
         const c = Object.assign({}, p);
         if (typeof p.value === "string") c.value = Math.round(evalExpr(p.value.replace(/^\{|\}$/g, ""), env) * 1e6) / 1e6; // 小数の計算誤差（0.1＋0.2 など）を丸める
+        if (typeof p.value === "string" && /^\{abs\(/.test(p.value)) c.absOk = true; // 金額の大きさ（絶対値）を問う欄：マイナスを付けた入力も正解にする
         if (typeof p.choiceAnswer === "string") c.choiceAnswer = evalExpr(p.choiceAnswer.replace(/^\{|\}$/g, ""), env);
         if (typeof p.label === "string") c.label = renderVaryText(p.label, env);
         return c;
@@ -7511,7 +7534,7 @@ function instantiate(q, rng) {
   };
   const ok = (env, r) => (!vary.when || evalExpr(vary.when, env)) &&
     new Set(r.options).size === r.options.length &&
-    (!r.input || r.input.every((p) => Number.isFinite(p.value) && p.value >= 0));
+    (!r.input || r.input.every((p) => Number.isFinite(p.value) && (p.value >= 0 || p.signed === true))); // マイナスの正解は signed の欄だけ
   if (rng) {
     for (let t = 0; t < 300; t++) {
       const env = pickVars(false);
@@ -7750,7 +7773,8 @@ function buildItem(tq, shuffleOptions, rng, opts) {
 
 // ---------------------------------------------------------------------------
 // 記述式（数値入力）の問題
-//   input: [{ label?, value, unit?, tolerance?, choice?: [2つ], choiceAnswer?: 1|2 }, ...]
+//   input: [{ label?, value, unit?, tolerance?, choice?: [2つ], choiceAnswer?: 1|2, signed?: true }, ...]
+//   signed: true … 符号付きで答える欄（正味現在価値・EVA・その他の包括利益など）。正解がマイナスなら「△」（−）を付けた入力だけが正解
 //   選択肢 options と answer は、誤答パターンの判定と、正解値の照合（check_quiz.js）に使うため残す
 // ---------------------------------------------------------------------------
 
@@ -7766,6 +7790,7 @@ function inputProblems(q) {
     if (typeof p.value !== "number" || !Number.isFinite(p.value)) msgs.push(at + "value は数値にしてください");
     if (p.unit !== undefined && typeof p.unit !== "string") msgs.push(at + "unit は文字列にしてください");
     if (p.tolerance !== undefined && !(typeof p.tolerance === "number" && p.tolerance >= 0)) msgs.push(at + "tolerance は0以上の数値にしてください");
+    if (p.signed !== undefined && p.signed !== true) msgs.push(at + "signed は true だけを書いてください（符号付きでない欄には書かない）");
     if (p.choice !== undefined) {
       if (!Array.isArray(p.choice) || p.choice.length !== 2 || !p.choice.every(isText)) msgs.push(at + "choice は文字列2つの配列にしてください");
       else if (p.choiceAnswer !== 1 && p.choiceAnswer !== 2) msgs.push(at + "choiceAnswer は 1 か 2 にしてください");
@@ -7779,7 +7804,7 @@ function inputProblems(q) {
 // 入力された文字列を数値にする（全角数字・カンマ・空白・単位の文字は無視）。数値として読めなければ null
 function parseAnswerNumber(raw) {
   if (typeof raw !== "string") return null;
-  let t = raw.replace(/[０-９．，－ー−]/g, (c) => ({ "．": ".", "，": ",", "－": "-", "ー": "-", "−": "-" }[c] || String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
+  let t = raw.replace(/[０-９．，－ー−△▲]/g, (c) => ({ "．": ".", "，": ",", "－": "-", "ー": "-", "−": "-", "△": "-", "▲": "-" }[c] || String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
   t = t.replace(/[,\s]/g, "").replace(/[^0-9.\-+]/g, "");
   if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(t)) return null;
   const n = Number(t);
@@ -7800,7 +7825,7 @@ function numbersIn(text) {
 //   ・BackSpaceでカンマだけを消したときは、その左の数字を消す（カンマが戻ってきて消せない、を防ぐ）
 //   ・カーソルは「左にある数字の個数」が変わらない位置に戻す
 function formatAmountTyping(value, caret, prev, backspace) {
-  const toHalf = (t) => t.replace(/[０-９．－ー−]/g, (c) => ({ "．": ".", "－": "-", "ー": "-", "−": "-" }[c] || String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
+  const toHalf = (t) => t.replace(/[０-９．－ー−△▲]/g, (c) => ({ "．": ".", "－": "-", "ー": "-", "−": "-", "△": "-", "▲": "-" }[c] || String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
   const sig = (t) => toHalf(t).replace(/[^0-9.\-]/g, "");
   let v = String(value);
   let pos = Math.max(0, Math.min(caret == null ? v.length : caret, v.length));
@@ -7832,9 +7857,19 @@ function formatNumber(v) {
   const [i, d] = String(v).split(".");
   return i.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (d ? "." + d : "");
 }
+// 符号付きの欄の表示：マイナスは「△」を付ける（本試験の答案の書き方）
+function formatAnswer(v, p) {
+  return p && p.signed && v < 0 ? "△" + formatNumber(-v) : formatNumber(v);
+}
 
+// 向き（有利・不利、借方・貸方など）を2択で答える欄と、金額の大きさ（abs）を問う欄では、
+// 「−12,345」のようにマイナスを付けて入力しても、大きさが合っていれば正解にする（向きは2択の方で採点する）。
+// 符号付きの欄（signed）は、符号まで一致したときだけ正解
 function numberMatches(n, p) {
-  return n !== null && Math.abs(n - p.value) <= (p.tolerance || 0) + 1e-9;
+  if (n === null) return false;
+  const tol = (p.tolerance || 0) + 1e-9;
+  if (Math.abs(n - p.value) <= tol) return true;
+  return n < 0 && !p.signed && !!(p.choice || p.absOk) && Math.abs(-n - p.value) <= tol;
 }
 
 // 採点。responses: [{ raw: 入力文字列, choice: 選んだ番号(1|2|null) }, ...]
@@ -7858,13 +7893,13 @@ function gradeInput(q, responses) {
 
 // 正解・回答を、表示用の文字列にする
 function inputAnswerText(q) {
-  return q.input.map((p) => (p.label ? p.label + "：" : "") + formatNumber(p.value) + (p.unit || "") + (p.choice ? "（" + p.choice[p.choiceAnswer - 1] + "）" : "")).join("／");
+  return q.input.map((p) => (p.label ? p.label + "：" : "") + formatAnswer(p.value, p) + (p.unit || "") + (p.choice ? "（" + p.choice[p.choiceAnswer - 1] + "）" : "")).join("／");
 }
 function inputResponseText(q, responses) {
   return q.input.map((p, i) => {
     const r = responses[i] || {};
     const n = parseAnswerNumber(r.raw);
-    const num = n === null ? "（未入力）" : formatNumber(n) + (p.unit || "");
+    const num = n === null ? "（未入力）" : formatAnswer(n, p) + (p.unit || "");
     return (p.label ? p.label + "：" : "") + num + (p.choice ? "（" + (r.choice ? p.choice[r.choice - 1] : "未選択") + "）" : "");
   }).join("／");
 }
@@ -8253,6 +8288,8 @@ function createCalculator(options) {
 
   const checked = checkConfig(CONFIG);
   const cfg = checked.config;
+  // 画面を横にしたとき、出題画面を横幅いっぱいまで広げる（CSSの #app.wide-scratch.on-quiz。on-quiz は出題画面の間だけ付ける）
+  if (cfg.scratchpad.wideInLandscape) { app.classList.add("wide-scratch"); app.style.setProperty("--wide-max", cfg.scratchpad.landscapeMaxWidth + "px"); }
   const data = validateQuestions(QUESTIONS, Object.keys(cfg.categoryColors), cfg.topics.map((t) => t.name));
   const pool = data.valid;
 
@@ -8434,6 +8471,7 @@ function createCalculator(options) {
 
   function renderStart() {
     state.screen = "start";
+    app.classList.remove("on-quiz");
     const counts = new Map();
     pool.forEach((q) => counts.set(q.category, (counts.get(q.category) || 0) + 1));
     const size = Math.min(cfg.quizSize, pool.length);
@@ -8584,7 +8622,11 @@ function createCalculator(options) {
       const saved = document.activeElement === inp ? [inp.selectionStart, inp.selectionEnd] : sel[active];
       if (saved && saved[0] !== null && saved[1] !== null) { a = Math.min(saved[0], v.length); b = Math.min(saved[1], v.length); }
       let nv, caret;
-      if (key === "bs") {
+      if (key === "neg" && !fields[active].signed) return; // △は符号付きの欄だけで効く（税引後CFなど、プラスで答える欄では無視）
+      if (key === "neg") { // 先頭のマイナスを付ける・外す（カーソル位置は数字に対して保つ）
+        if (v.charAt(0) === "-") { nv = v.slice(1); caret = Math.max(0, a - 1); }
+        else { nv = "-" + v; caret = a + 1; }
+      } else if (key === "bs") {
         if (a === b) { if (a === 0) return; a -= 1; }
         nv = v.slice(0, a) + v.slice(b); caret = a;
       } else if (key === "clr") {
@@ -8617,6 +8659,7 @@ function createCalculator(options) {
     setActive(0);
     return {
       type, set, multi: fields.length > 1,
+      signed: fields.some((f) => f.signed), // 符号付きの欄があればテンキーに「△」キーを出す
       value: () => fields[active].inp.value,
       label: () => fields.length > 1 ? (fields[active].label || "欄" + (active + 1)) : "",
       onChange: (fn) => listeners.push(fn),
@@ -8629,14 +8672,15 @@ function createCalculator(options) {
     // キーの並びは CSS の grid-template-areas で決める（画面の幅で4列・3列を切り替えるため）。area はキーの置き場所の名前
     const defs = [["7"], ["8"], ["9"], ["4"], ["5"], ["6"], ["1"], ["2"], ["3"], ["0"], ["00"], [".", "．", "", "小数点", "dot"],
       ["bs", "⌫", "fn", "1文字消す", "bs"], ["clr", "クリア", "fn", "この欄を全部消す", "clr"],
-      ...(multi ? [["next", "次の欄", "fn", "次の入力欄へ", "nx"]] : [])];
+      ...(multi ? [["next", "次の欄", "fn", "次の入力欄へ", "nx"]] : []),
+      ...(target.signed ? [["neg", "△", "fn sg", "マイナス（△）を付ける・外す", "neg"]] : [])];
     const keys = defs.map(([key, label, kind, aria, area]) => {
       const btn = h("button", { type: "button", class: "nk " + (kind || ""), "aria-label": aria || key, tabindex: "-1", style: "grid-area:" + (area || "k" + key) }, label || key);
       btn.addEventListener("mousedown", (e) => e.preventDefault()); // 押しても入力欄からカーソルが外れないように
       bindPress(btn, () => type(key));
       return btn;
     });
-    return h("div", { class: "numpad " + (multi ? "multi" : "single"), role: "group", "aria-label": "テンキー" }, keys);
+    return h("div", { class: "numpad " + (multi ? "multi" : "single") + (target.signed ? " sg" : ""), role: "group", "aria-label": "テンキー" }, keys);
   }
 
   function buildCalculator() {
@@ -8661,7 +8705,7 @@ function createCalculator(options) {
     //   ・「回答欄へ」… 電卓に表示中の数字を、選んでいる回答欄にそのまま入れる（転記）
     const target = answerTarget;
     let mode = "calc";
-    const INPUT_KEYS = { back: "bs", CCE: "clr", CA: "clr" };
+    const INPUT_KEYS = { back: "bs", CCE: "clr", CA: "clr", neg: "neg" };
     function press(key) {
       if (mode === "input" && target) {
         const k = /^[0-9]$/.test(key) || key === "00" || key === "." ? key : INPUT_KEYS[key];
@@ -9068,17 +9112,20 @@ function createCalculator(options) {
     const panels = h("div", { class: "tool-panels" }, scratch ? scratch.panel : null, calc ? calc.panel : null);
     toolsSync = null;
     if (calc) calc.toggle.addEventListener("click", syncNumpad);
-    if (calc && scratch) {
+    if (scratch) {
+      // both＝両方開いている（横に並べる）、solo-scratch＝下書き欄だけ開いている（横向きの画面では横幅いっぱいに広げる）
       const sync = () => {
-        const both = !scratch.panel.hidden && !calc.panel.hidden;
-        if (panels.classList.contains("both") === both) return;
+        const sOpen = !scratch.panel.hidden, cOpen = !!calc && !calc.panel.hidden;
+        const both = sOpen && cOpen, solo = sOpen && !cOpen;
+        if (panels.classList.contains("both") === both && panels.classList.contains("solo-scratch") === solo) return;
         panels.classList.toggle("both", both);
+        panels.classList.toggle("solo-scratch", solo);
         requestAnimationFrame(() => { if (activeScratch) activeScratch.fit(); }); // 下書き欄の幅が変わるので描き直す
       };
       toolsSync = sync;
       // 開閉ボタンの処理（各パネルの hidden の切り替え）が済んだ後に並べ方を決める
       scratch.toggle.addEventListener("click", sync);
-      calc.toggle.addEventListener("click", sync);
+      if (calc) calc.toggle.addEventListener("click", sync);
       sync();
     }
     return h("div", { class: "calc-wrap" },
@@ -9093,6 +9140,7 @@ function createCalculator(options) {
 
   function renderQuiz() {
     state.screen = "quiz";
+    app.classList.add("on-quiz");
     state.selected = null;
     state.answered = false;
     state.calcOpen = cfg.calculator.startOpen; // 電卓は、各問題を「閉じた状態」で始める（前の問題で開いていても引き継がない）
@@ -9159,9 +9207,10 @@ function createCalculator(options) {
             h("span", { class: "opt-text" }, c))) : [];
         const el = h("div", { class: "field" },
           p.label ? h("label", { class: "field-label", for: id }, p.label) : null,
+          p.signed ? h("p", { class: "field-note" }, useNumpad ? "マイナスのときは「△」キーで符号を付けます" : "マイナスのときは「-」（または△）を付けて入力します") : null,
           h("div", { class: "num-row" }, inp, p.unit ? h("span", { class: "unit" }, p.unit) : null),
           p.choice ? h("div", { class: "options ox chips", role: "radiogroup", "aria-label": (p.label || "答え") + "の判断" }, chips) : null);
-        return { el, inp, chips, label: p.label || "" };
+        return { el, inp, chips, label: p.label || "", signed: p.signed === true };
       });
     }
 
@@ -9335,6 +9384,7 @@ function createCalculator(options) {
 
   function renderResult() {
     state.screen = "result";
+    app.classList.remove("on-quiz");
     view = null;
     saveJSON(SESSION_KEY, null); // 最後まで解いたので、途中の小テストとしては残さない
     const total = state.records.length;
