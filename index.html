@@ -436,13 +436,12 @@
     .tool-panels.both .scratch-canvas { height: 445px; } /* 電卓とほぼ同じ高さにそろえる */
     .tool-panels.both .scratch-hint, .tool-panels.both .calc-hint { display: none; }
   }
-  /* 画面を横にしたとき（CONFIG.scratchpad.wideInLandscape）：出題画面を画面の横幅いっぱい（上限 landscapeMaxWidth）まで広げる。
-     問題文・下書き欄が広がり、電卓は縦向きと同じ幅（306px）のまま。トップ画面と結果画面は従来の幅 */
-  @media (min-width: 600px) and (orientation: landscape) {
-    #app.wide-scratch.on-quiz { max-width: var(--wide-max, 1400px); }
-    #app.wide-scratch.on-quiz .answer-input { max-width: 720px; } /* 回答欄（とテンキー）は縦向きと同じくらいの幅にとどめる（横に長すぎる入力欄は目で追いにくい） */
-    #app.wide-scratch .tool-panels.both { grid-template-columns: minmax(0, 1fr) 306px; }
-  }
+  /* 横幅に余裕がある画面（CONFIG.scratchpad.wideInLandscape）：出題画面を画面の横幅いっぱい（上限 landscapeMaxWidth）まで広げる。
+     対象は「横向きで幅600px以上」と「向きにかかわらず幅 wideMinWidth（既定900px）以上」（12.9インチiPad Proの縦向きなど）。
+     どちらに当たるかはJS（applyWide）が判定して #app に wide-on を付ける。問題文・下書き欄が広がり、電卓は306pxのまま。トップ画面と結果画面は従来の幅 */
+  #app.wide-scratch.wide-on.on-quiz { max-width: var(--wide-max, 1400px); }
+  #app.wide-scratch.wide-on.on-quiz .answer-input { max-width: 720px; } /* 回答欄（とテンキー）は縦向きと同じくらいの幅にとどめる（横に長すぎる入力欄は目で追いにくい） */
+  #app.wide-scratch.wide-on .tool-panels.both { grid-template-columns: minmax(0, 1fr) 306px; }
   /* 幅700px以上（iPad mini の縦向きなど）では、画面の横幅を少し広く使う */
   @media (min-width: 700px) { #app { max-width: 760px; } }
   .tool-toggles.two { grid-template-columns: 1fr 1fr; }
@@ -653,6 +652,7 @@ const CONFIG = {
     enabled: true,           // false にすると下書き欄を出さない
     wideInLandscape: true,   // 画面を横にしたとき（幅600px以上）、出題画面（問題文・下書き欄など）を画面の横幅いっぱいまで広げる（電卓の大きさは変えない）。false で従来どおり
     landscapeMaxWidth: 1400, // 横にしたときの出題画面の最大の横幅（px）。大きなモニターで広がりすぎないように
+    wideMinWidth: 900,       // 縦向きでも、画面の幅がこれ以上（px）なら出題画面を広げる（12.9インチiPad Proの縦向きは1024px。11インチは834pxなので対象外）
   },
 
   // 計算問題（記述式）では、iPad・PCなど幅600px以上の画面で、下書き欄と電卓を開いた状態で始める（false で閉じた状態から）。
@@ -715,9 +715,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "7.2",
+  version: "7.3",
   updated: "2026-11-14",
   changelog: [
+    ["2026-11-14", "12.9インチiPad Proの縦向きなど、幅900px以上の画面でも出題画面を横幅いっぱいまで広げるように"],
     ["2026-11-14", "Apple Pencilの手書き入力（スクリブル）がオンのとき、電卓・テンキーの連続タップが取りこぼされる問題への対処"],
     ["2026-10-30", "画面を横にしたとき、問題文と下書き欄を横幅いっぱいまで広げるように（電卓の大きさはそのまま）"],
     ["2026-10-29", "正味現在価値・残余利益・EVA・その他の包括利益・連結CFの一部など12欄を符号付きの答えに（マイナスは「△」キーで入力）。正味現在価値は金額と採否で答える形に"],
@@ -7381,6 +7382,7 @@ function checkConfig(raw) {
         enabled: !(c.scratchpad && c.scratchpad.enabled === false),
         wideInLandscape: !(c.scratchpad && c.scratchpad.wideInLandscape === false),
         landscapeMaxWidth: c.scratchpad && Number.isFinite(c.scratchpad.landscapeMaxWidth) && c.scratchpad.landscapeMaxWidth >= 600 ? c.scratchpad.landscapeMaxWidth : 1400,
+        wideMinWidth: c.scratchpad && Number.isFinite(c.scratchpad.wideMinWidth) && c.scratchpad.wideMinWidth >= 600 ? c.scratchpad.wideMinWidth : 900,
       },
       openToolsForCalc: c.openToolsForCalc !== false,
       theoryOxRate: typeof c.theoryOxRate === "number" && c.theoryOxRate >= 0 && c.theoryOxRate <= 1 ? c.theoryOxRate : 0.4,
@@ -8290,7 +8292,21 @@ function createCalculator(options) {
   const checked = checkConfig(CONFIG);
   const cfg = checked.config;
   // 画面を横にしたとき、出題画面を横幅いっぱいまで広げる（CSSの #app.wide-scratch.on-quiz。on-quiz は出題画面の間だけ付ける）
-  if (cfg.scratchpad.wideInLandscape) { app.classList.add("wide-scratch"); app.style.setProperty("--wide-max", cfg.scratchpad.landscapeMaxWidth + "px"); }
+  if (cfg.scratchpad.wideInLandscape) {
+    app.classList.add("wide-scratch");
+    app.style.setProperty("--wide-max", cfg.scratchpad.landscapeMaxWidth + "px");
+    // 横向き（幅600px以上）か、幅 wideMinWidth 以上なら広げる。回転・ウィンドウの大きさの変更にも追従する
+    const wideMQ = window.matchMedia ? ["(min-width: 600px) and (orientation: landscape)", "(min-width: " + cfg.scratchpad.wideMinWidth + "px)"].map((q) => window.matchMedia(q)) : [];
+    const applyWide = () => {
+      const on = wideMQ.some((m) => m.matches);
+      if (app.classList.contains("wide-on") === on) return;
+      app.classList.toggle("wide-on", on);
+      // 下書き欄の幅が変わるので、画面の大きさの変更として扱い直す（下書き欄の画素数の合わせ直しなど。resize の後に change が届く端末があるため）
+      requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    };
+    wideMQ.forEach((m) => { if (m.addEventListener) m.addEventListener("change", applyWide); else if (m.addListener) m.addListener(applyWide); });
+    applyWide();
+  }
   const data = validateQuestions(QUESTIONS, Object.keys(cfg.categoryColors), cfg.topics.map((t) => t.name));
   const pool = data.valid;
 
