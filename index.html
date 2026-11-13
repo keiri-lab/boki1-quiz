@@ -715,9 +715,10 @@ const CONFIG = {
   ],
 
   // バージョンと更新履歴（スタート画面の一番下に表示）。更新したら version と updated を変え、changelog の先頭に1行足す
-  version: "7.1",
-  updated: "2026-10-30",
+  version: "7.2",
+  updated: "2026-11-14",
   changelog: [
+    ["2026-11-14", "Apple Pencilの手書き入力（スクリブル）がオンのとき、電卓・テンキーの連続タップが取りこぼされる問題への対処"],
     ["2026-10-30", "画面を横にしたとき、問題文と下書き欄を横幅いっぱいまで広げるように（電卓の大きさはそのまま）"],
     ["2026-10-29", "正味現在価値・残余利益・EVA・その他の包括利益・連結CFの一部など12欄を符号付きの答えに（マイナスは「△」キーで入力）。正味現在価値は金額と採否で答える形に"],
     ["2026-10-29", "正味現在価値・差異などの、向き（プラス・マイナス、有利・不利など）を選ぶ問題で、金額にマイナスを付けて入力しても正解に（大きさが合っていれば）"],
@@ -8585,6 +8586,18 @@ function createCalculator(options) {
     btn.addEventListener("contextmenu", (e) => e.preventDefault()); // 長押しでメニューを出さない
   }
 
+  // Apple Pencil の「手書き入力（スクリブル）」対策：スクリブルがオンだと、回答欄の近くでペンが触れるたびに
+  // 「手書きの文字か」の判定が入り、キーの素早い連続タップが取りこぼされる（iPad Pro＋Apple Pencil で確認）。
+  // キーの集まり（電卓・テンキー）の上では、ペン（touchType が "stylus"）のタッチの既定の動作を止めてスクリブルに渡さない。
+  // 入力そのものは pointer イベント（bindPress）で受けているので影響しない。指のタッチ（スマホでのスクロールなど）はこれまでどおり
+  const isStylus = (e) => Array.prototype.some.call(e.changedTouches || [], (t) => t.touchType === "stylus");
+  function blockScribble(el) {
+    const stop = (e) => { if (e.cancelable && isStylus(e)) e.preventDefault(); };
+    el.addEventListener("touchstart", stop, { passive: false });
+    el.addEventListener("touchmove", stop, { passive: false });
+    return el;
+  }
+
   // ---- 記述式の画面内テンキー ----
   // iPadには数字だけのキーボードがなく、inputmode="decimal" でも通常のキーボードが出て画面の半分を覆う。
   // そこで端末のキーボードは出さず（inputmode="none"）、回答欄の下に数字キーを出す。外付けキーボードからの入力はそのまま使える。
@@ -8680,7 +8693,7 @@ function createCalculator(options) {
       bindPress(btn, () => type(key));
       return btn;
     });
-    return h("div", { class: "numpad " + (multi ? "multi" : "single") + (target.signed ? " sg" : ""), role: "group", "aria-label": "テンキー" }, keys);
+    return blockScribble(h("div", { class: "numpad " + (multi ? "multi" : "single") + (target.signed ? " sg" : ""), role: "group", "aria-label": "テンキー" }, keys));
   }
 
   function buildCalculator() {
@@ -8766,7 +8779,7 @@ function createCalculator(options) {
 
     const panel = h("div", { class: "calc", tabindex: "-1", role: "group", "aria-label": "電卓", hidden: !state.calcOpen },
       h("div", { class: "calc-display" }, h("div", { class: "calc-flags" }, flagM, flagGT, flagMode, flagOp), screen),
-      h("div", { class: "calc-keys" }, keys),
+      blockScribble(h("div", { class: "calc-keys" }, keys)),
       h("p", { class: "calc-hint" }, "PC：数字・+ − * /・%・Enter（＝）・Backspace（一桁取消）・Delete（C・CE）が使えます。"));
 
     panel.addEventListener("keydown", (e) => {
